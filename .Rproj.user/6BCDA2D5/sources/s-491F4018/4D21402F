@@ -1,0 +1,20 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1578163639494.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "145241146",
+    "id" : "4D21402F",
+    "lastKnownWriteTime" : 1569250253,
+    "last_content_update" : 1569250253,
+    "path" : "~/Documents/research/preferential_surveillance/simulation_data.R",
+    "project_path" : "simulation_data.R",
+    "properties" : {
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
