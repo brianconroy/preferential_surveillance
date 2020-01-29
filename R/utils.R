@@ -421,24 +421,9 @@ n_values <- function(r){
 }
 
 
-#' load_prism_pcs
-#'
-#' @return raster stack of first 2 PRISM principal components
-#' @export
-#'
-#' @examples
 load_prism_pcs <- function(){
   
-  file <- "Documents/research/dataInt/data/prism_pcas_ca.grd"
-  return(stack(file))
-  
-}
-
-
-load_prism_pcs2 <- function(){
-  
-  file <- "Documents/research/dataInt/data/prism_pcas_ca2.grd"
-  return(stack(file))
+  return(raster::stack("data/prism_pcas_ca.grd"))
   
 }
 

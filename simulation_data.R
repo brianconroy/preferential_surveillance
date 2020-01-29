@@ -3,92 +3,200 @@
 # values
 #############################
 
+library(raster)
+library(sp)
 library(plyr)
 library(mvtnorm)
+library(MASS)
+library(fields)
 library(R.utils)
-sourceDirectory('Documents/research/dataInt/R/')
+sourceDirectory('R/')
 
 
-#### Prism Principal Components
-caPr <- load_prism_pcs2()
+#### Simulation parameters for each level
+n_sims <- 25
+agg_factor <- 10
+
+
+#### Prism principal components
+caPr <- load_prism_pcs()
 caPr.disc <- aggregate(caPr, fact=9)
-n_values(caPr.disc[[1]])
+print(n_values(caPr.disc[[1]]))
 plot(caPr.disc)
 
 
-#### Simulate gaussian process
-Theta <- 6
-Phi <- 12
-cells.all <- c(1:ncell(caPr.disc))[!is.na(values(caPr.disc[[1]]))]
-coords <- xyFromCell(caPr.disc, cell=cells.all)
-d <- as.matrix(dist(coords, diag=TRUE, upper=TRUE))
-Sigma <- Exponential(d, range=Theta, phi=Phi)
-set.seed(40)
-W <- mvrnorm(n=1, mu=rep(0, length(cells.all)), Sigma)
-N <- length(W)
+#### Level: Low preferential sampling
+# Median preferential sampling contribution: 17.48%
+prevalences <- c()
+ps_contribs <- c()
+obs_cells <- c()
+n_specimen <- c()
+
+Alpha.case <- 0.5
+Alpha.ctrl <- 0.3
+beta.case <- c(1, 0.75, 0.25)
+beta.ctrl <- c(3, 1, 0.5)
+beta.loc <- c(-1.5, 1, -0.25)
+for (i in 1:n_sims){
+  
+  #### Simulate gaussian process
+  Theta <- 6
+  Phi <- 12
+  cells.all <- c(1:ncell(caPr.disc))[!is.na(values(caPr.disc[[1]]))]
+  coords <- xyFromCell(caPr.disc, cell=cells.all)
+  d <- as.matrix(dist(coords, diag=TRUE, upper=TRUE))
+  Sigma <- Exponential(d, range=Theta, phi=Phi)
+  W <- mvrnorm(n=1, mu=rep(0, length(cells.all)), Sigma)
+  N <- length(W)
+  
+  #### Simulate locations
+  locs <- simBernoulliLocCov(caPr.disc, beta.loc, w=W)
+  obs_cells <- c(obs_cells, sum(locs$status))
+  
+  ps_contribs <- c(ps_contribs, 
+                   calc_ps_contribution(caPr.disc, locs, beta.case, Alpha.case, beta.ctrl, Alpha.ctrl, W))
+  
+  
+  #### Simulate counts given locations
+  case.data <- simConditionalGp2(caPr.disc, locs, beta.case, Alpha.case, W)
+  ctrl.data <- simConditionalGp2(caPr.disc, locs, beta.ctrl, Alpha.ctrl, W)
+  prevalences <- c(prevalences, sum(case.data$y)/sum(case.data$y + ctrl.data$y))
+  n_specimen <- c(n_specimen, sum(case.data$y + ctrl.data$y))
+  
+  params <- list(
+    sampling="low",
+    beta.case=beta.case,
+    beta.ctrl=beta.ctrl,
+    alpha.case=Alpha.case,
+    alpha.ctrl=Alpha.ctrl,
+    beta.loc=beta.loc,
+    Theta=Theta,
+    Phi=Phi,
+    W=W
+  )
+  
+  # dst <- "/Users/brianconroy/Documents/research/dataInt/output/sim_iteration/"
+  # save_output(params, paste("params_low_", i, ".json", sep=""), dst=dst)
+  # 
+  # data <- list(
+  #   case.data=case.data,
+  #   ctrl.data=ctrl.data,
+  #   locs=locs
+  # )
+  # save_output(data, paste("data_low_", i, ".json", sep=""), dst=dst)
+  
+}
+
+print(summary(prevalences))
+print(summary(ps_contribs))
+print(summary(obs_cells))
+print(summary(n_specimen))
 
 
-#### Simulate locations
-beta.samp <- c(-1, 1, -0.5)
-locs <- simBernoulliLocCov(caPr.disc, beta.samp, w=W, seed=56)
-sum(locs$status)
-hist(locs$w)
-plot(caPr.disc[[1]])
-points(locs$coords)
+#### Level: High preferential sampling
+# Median preferential sampling contribution: 17.48%
+prevalences <- c()
+ps_contribs <- c()
+obs_cells <- c()
+n_specimen <- c()
 
-# none: alpha_+ = 0, alpha_- = 0
-# how to justify "medium", "high" designations
-# medium: 10, 25
+Alpha.case <- 1
+Alpha.ctrl <- -0.25
+beta.case <- c(-1.5, 0.25, 0.25)
+beta.ctrl <- c(3, 1, 0.5)
+beta.loc <- c(-1.5, 1, -0.25)
+for (i in 1:n_sims){
+  
+  #### Simulate gaussian process
+  Theta <- 6
+  Phi <- 12
+  cells.all <- c(1:ncell(caPr.disc))[!is.na(values(caPr.disc[[1]]))]
+  coords <- xyFromCell(caPr.disc, cell=cells.all)
+  d <- as.matrix(dist(coords, diag=TRUE, upper=TRUE))
+  Sigma <- Exponential(d, range=Theta, phi=Phi)
+  W <- mvrnorm(n=1, mu=rep(0, length(cells.all)), Sigma)
+  N <- length(W)
+  
+  #### Simulate locations
+  locs <- simBernoulliLocCov(caPr.disc, beta.loc, w=W)
+  obs_cells <- c(obs_cells, sum(locs$status))
+  
+  ps_contribs <- c(ps_contribs, 
+                   calc_ps_contribution(caPr.disc, locs, beta.case, Alpha.case, beta.ctrl, Alpha.ctrl, W))
+  
+  
+  #### Simulate counts given locations
+  case.data <- simConditionalGp2(caPr.disc, locs, beta.case, Alpha.case, W)
+  ctrl.data <- simConditionalGp2(caPr.disc, locs, beta.ctrl, Alpha.ctrl, W)
+  prevalences <- c(prevalences, sum(case.data$y)/sum(case.data$y + ctrl.data$y))
+  n_specimen <- c(n_specimen, sum(case.data$y + ctrl.data$y))
+  
+  params <- list(
+    sampling="high",
+    beta.case=beta.case,
+    beta.ctrl=beta.ctrl,
+    alpha.case=Alpha.case,
+    alpha.ctrl=Alpha.ctrl,
+    beta.loc=beta.loc,
+    Theta=Theta,
+    Phi=Phi,
+    W=W
+  )
+  
+  dst <- "/Users/brianconroy/Documents/research/dataInt/output/sim_iteration/"
+  save_output(params, paste("params_high_", i, ".json", sep=""), dst=dst)
+  
+  data <- list(
+    case.data=case.data,
+    ctrl.data=ctrl.data,
+    locs=locs
+  )
+  save_output(data, paste("data_high_", i, ".json", sep=""), dst=dst)
+  
+}
 
-# prevalences:
-# low, medium, high
-# 0.05, 0.15, 0.25
-
-sampling <- 'none'
-Alpha.case <- 0
-Alpha.ctrl <- 0
-prev <- 'high'
-beta.case <- c(2.75, 0.75, 0.25)
-beta.ctrl <- c(3.6, 1, 0.5)
-cov.disc <- caPr.disc
+print(summary(prevalences))
+print(summary(ps_contribs))
+print(summary(obs_cells))
+print(summary(n_specimen))
 
 
-calc_ps_contribution(cov.disc, locs, beta.case, Alpha.case, beta.ctrl, Alpha.ctrl, W)
+# recover ps-contributions
+# high preferential sampling
+src <- "/Users/brianconroy/Documents/research/dataInt/output/sim_iteration/"
+ps_high <- c()
+Alpha.case <- 1
+Alpha.ctrl <- -0.25
+beta.case <- c(-1.5, 0.25, 0.25)
+beta.ctrl <- c(3, 1, 0.5)
+beta.loc <- c(-1.5, 1, -0.25)
+for (i in 1:25){
+  params <- load_output(paste("params_high_", i, ".json", sep=""), src=src)
+  data <- load_output(paste("data_high_", i, ".json", sep=""), src=src)
+  locs <- data$locs
+  W <- params$W
+  ps_high <- c(ps_high, 
+               calc_ps_contribution(caPr.disc, locs, beta.case, Alpha.case, beta.ctrl, Alpha.ctrl, W))
+}
+print(summary(ps_high))
+#Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#19.38   25.01   32.98   33.23   39.45   58.94 
 
-
-#### Simulate counts given locations
-case.data <- simConditionalGp2(cov.disc, locs, beta.case, Alpha.case, W, seed=42)
-ctrl.data <- simConditionalGp2(cov.disc, locs, beta.ctrl, Alpha.ctrl, W, seed=40)
-sum(case.data$y)/sum(case.data$y + ctrl.data$y)
-
-sum(case.data$y)
-sum(ctrl.data$y)
-print(case.data$y)
-print(ctrl.data$y)
-print(round(case.data$y/(case.data$y + ctrl.data$y), 3))
-
-params <- list(
-  sampling=sampling,
-  prevalence=prev,
-  beta.case=beta.case,
-  beta.ctrl=beta.ctrl,
-  alpha.case=Alpha.case,
-  alpha.ctrl=Alpha.ctrl,
-  total.y.ca=sum(case.data$y),
-  total.y.co=sum(ctrl.data$y),
-  prev=round(sum(case.data$y)/sum(case.data$y + ctrl.data$y), 2),
-  beta.samp=beta.samp,
-  Theta=Theta,
-  Phi=Phi,
-  W=W
-)
-
-save_output(params, paste("v2_params_", prev, "_", sampling, ".json", sep=""))
-
-data <- list(
-  case.data=case.data,
-  ctrl.data=ctrl.data,
-  locs=locs
-)
-
-save_output(data, paste("v2_data_", prev, "_", sampling, ".json", sep=""))
+# low preferential sampling
+ps_low <- c()
+Alpha.case <- 0.5
+Alpha.ctrl <- 0.3
+beta.case <- c(1, 0.75, 0.25)
+beta.ctrl <- c(3, 1, 0.5)
+beta.loc <- c(-1.5, 1, -0.25)
+for (i in 1:25){
+  params <- load_output(paste("params_low_", i, ".json", sep=""), src=src)
+  data <- load_output(paste("data_low_", i, ".json", sep=""), src=src)
+  locs <- data$locs
+  W <- params$W
+  ps_low <- c(ps_low, 
+              calc_ps_contribution(caPr.disc, locs, beta.case, Alpha.case, beta.ctrl, Alpha.ctrl, W))
+}
+print(summary(ps_low))
+#Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#19.38   25.01   32.98   33.23   39.45   58.94 
