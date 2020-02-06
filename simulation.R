@@ -53,9 +53,9 @@ d <- as.matrix(dist(coords, diag=TRUE, upper=TRUE))
 # Random effects, beta.samp, theta, phi
 prior_theta <- get_gamma_prior(Theta, 5)
 prior_phi <- get_igamma_prior(Phi, 5)
-w_output <- logisticGpCov(y=data$locs$status, x=data$locs$x.scaled, d, n.sample=1000, burnin=0, L_beta=8, L_w=8, proposal.sd.theta=0.3,
-                          w_initial=NULL, theta_initial=NULL, phi_initial=NULL, beta_initial=NULL,
-                          prior_phi=prior_phi, prior_theta=prior_theta)
+w_output <- logisticGp(y=data$locs$status, x=data$locs$x.scaled, d, n.sample=1000, burnin=0, L_beta=8, L_w=8, proposal.sd.theta=0.3,
+                       w_initial=NULL, theta_initial=NULL, phi_initial=NULL, beta_initial=NULL,
+                       prior_phi=prior_phi, prior_theta=prior_theta)
 
 # Optional burnin
 w_output <- burnin_logistic_gp_cov(w_output, n.burn=500)
@@ -124,7 +124,7 @@ target_w=0.65
 target_loc=0.65
 
 # Run fit
-output <- prefSampleGpV2(data, d, n.sample, burnin,
+output <- preferentialSampling(data, d, n.sample, burnin,
                          L_w, L_ca, L_co, L_a_ca, L_a_co,
                          proposal.sd.theta=proposal.sd.theta,
                          m_aca=m_aca, m_aco=m_aco, m_ca=m_ca, m_co=m_co, m_w=m_w, 

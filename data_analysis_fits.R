@@ -108,7 +108,7 @@ prior_theta <- get_gamma_prior(prior_mean=3, prior_var=3)
 prior_phi <- get_igamma_prior(prior_mean=15, prior_var=3)
 
 # W initial value
-w_output <- logisticGpCov(locs$status, locs$x.scaled, d, n.sample=1000, burnin=0, L_beta=8, L_w=8, proposal.sd.theta=0.3,
+w_output <- logisticGp(locs$status, locs$x.scaled, d, n.sample=1000, burnin=0, L_beta=8, L_w=8, proposal.sd.theta=0.3,
                           w_initial=NULL, theta_initial=NULL, phi_initial=NULL, beta_initial=NULL,
                           prior_phi=prior_phi, prior_theta=prior_theta)
 
@@ -178,7 +178,7 @@ target_co=0.65
 target_w=0.65
 target_loc=0.65
 
-output <- prefSampleGpV2(data, d, n.sample, burnin, 
+output <- preferentialSampling(data, d, n.sample, burnin, 
                          L_w, L_ca, L_co, L_a_ca, L_a_co,
                          proposal.sd.theta=proposal.sd.theta,
                          m_aca=m_aca, m_aco=m_aco, m_ca=m_ca, m_co=m_co, m_w=m_w, 
