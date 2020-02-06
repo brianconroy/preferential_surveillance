@@ -13,7 +13,7 @@ library(lattice)
 library(plyr)
 library(mvtnorm)
 library(R.utils)
-sourceDirectory('Documents/research/dataInt/R/')
+sourceDirectory('R/')
 
 
 src <- "/Users/brianconroy/Documents/research/dataInt/output/sim_iteration/"

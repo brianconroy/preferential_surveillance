@@ -10,7 +10,7 @@ library(mvtnorm)
 library(ggplot2)
 library(R.utils)
 library(gridExtra)
-sourceDirectory('Documents/research/dataInt/R/')
+sourceDirectory('R/')
 
 
 dst <- "/Users/brianconroy/Documents/research/project1/analysis/"

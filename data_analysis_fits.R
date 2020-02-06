@@ -1,7 +1,7 @@
 
 library(mvtnorm)
 library(R.utils)
-sourceDirectory('Documents/research/dataInt/R/')
+sourceDirectory('R/')
 
 
 caPr <- load_prism_pcs2()

@@ -50,16 +50,15 @@ for (i in 1:n_sims){
   N <- length(W)
   
   #### Simulate locations
-  locs <- simBernoulliLocCov(caPr.disc, beta.loc, w=W)
+  locs <- simLocations(caPr.disc, beta.loc, w=W)
   obs_cells <- c(obs_cells, sum(locs$status))
   
   ps_contribs <- c(ps_contribs, 
                    calc_ps_contribution(caPr.disc, locs, beta.case, Alpha.case, beta.ctrl, Alpha.ctrl, W))
   
-  
   #### Simulate counts given locations
-  case.data <- simConditionalGp2(caPr.disc, locs, beta.case, Alpha.case, W)
-  ctrl.data <- simConditionalGp2(caPr.disc, locs, beta.ctrl, Alpha.ctrl, W)
+  case.data <- simCounts(caPr.disc, locs, beta.case, Alpha.case, W)
+  ctrl.data <- simCounts(caPr.disc, locs, beta.ctrl, Alpha.ctrl, W)
   prevalences <- c(prevalences, sum(case.data$y)/sum(case.data$y + ctrl.data$y))
   n_specimen <- c(n_specimen, sum(case.data$y + ctrl.data$y))
   
@@ -118,7 +117,7 @@ for (i in 1:n_sims){
   N <- length(W)
   
   #### Simulate locations
-  locs <- simBernoulliLocCov(caPr.disc, beta.loc, w=W)
+  locs <- simLocations(caPr.disc, beta.loc, w=W)
   obs_cells <- c(obs_cells, sum(locs$status))
   
   ps_contribs <- c(ps_contribs, 
@@ -126,8 +125,8 @@ for (i in 1:n_sims){
   
   
   #### Simulate counts given locations
-  case.data <- simConditionalGp2(caPr.disc, locs, beta.case, Alpha.case, W)
-  ctrl.data <- simConditionalGp2(caPr.disc, locs, beta.ctrl, Alpha.ctrl, W)
+  case.data <- simCounts(caPr.disc, locs, beta.case, Alpha.case, W)
+  ctrl.data <- simCounts(caPr.disc, locs, beta.ctrl, Alpha.ctrl, W)
   prevalences <- c(prevalences, sum(case.data$y)/sum(case.data$y + ctrl.data$y))
   n_specimen <- c(n_specimen, sum(case.data$y + ctrl.data$y))
   

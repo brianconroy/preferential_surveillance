@@ -9,7 +9,7 @@
 library(plyr)
 library(mvtnorm)
 library(R.utils)
-sourceDirectory('Documents/research/dataInt/R/')
+sourceDirectory('R/')
 
 
 sampling <- "none"
