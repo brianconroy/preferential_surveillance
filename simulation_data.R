@@ -1,7 +1,6 @@
-#############################
-# Choose simulation parameter
-# values
-#############################
+###################
+# Simulate datasets
+###################
 
 library(raster)
 library(sp)
@@ -13,7 +12,11 @@ library(R.utils)
 sourceDirectory('R/')
 
 
-#### Simulation parameters for each level
+#### Setup
+dst <- ""  # directory to store output datasets
+
+
+#### Simulation parameters
 n_sims <- 25
 agg_factor <- 10
 
@@ -26,7 +29,7 @@ plot(caPr.disc)
 
 
 #### Level: Low preferential sampling
-# Median preferential sampling contribution: 17.48%
+# Median preferential sampling contribution: 19.87%
 prevalences <- c()
 ps_contribs <- c()
 obs_cells <- c()
@@ -74,16 +77,15 @@ for (i in 1:n_sims){
     W=W
   )
   
-  # dst <- "/Users/brianconroy/Documents/research/dataInt/output/sim_iteration/"
-  # save_output(params, paste("params_low_", i, ".json", sep=""), dst=dst)
-  # 
-  # data <- list(
-  #   case.data=case.data,
-  #   ctrl.data=ctrl.data,
-  #   locs=locs
-  # )
-  # save_output(data, paste("data_low_", i, ".json", sep=""), dst=dst)
-  
+  if (dst != ""){
+    save_output(params, paste("params_low_", i, ".json", sep=""), dst=dst)
+    data <- list(
+      case.data=case.data,
+      ctrl.data=ctrl.data,
+      locs=locs
+    )
+    save_output(data, paste("data_low_", i, ".json", sep=""), dst=dst)
+  }
 }
 
 print(summary(prevalences))
@@ -93,7 +95,7 @@ print(summary(n_specimen))
 
 
 #### Level: High preferential sampling
-# Median preferential sampling contribution: 17.48%
+# Median preferential sampling contribution: 32.98%
 prevalences <- c()
 ps_contribs <- c()
 obs_cells <- c()
@@ -142,15 +144,15 @@ for (i in 1:n_sims){
     W=W
   )
   
-  dst <- "/Users/brianconroy/Documents/research/dataInt/output/sim_iteration/"
-  save_output(params, paste("params_high_", i, ".json", sep=""), dst=dst)
-  
-  data <- list(
-    case.data=case.data,
-    ctrl.data=ctrl.data,
-    locs=locs
-  )
-  save_output(data, paste("data_high_", i, ".json", sep=""), dst=dst)
+  if (dst != ""){
+    save_output(params, paste("params_high_", i, ".json", sep=""), dst=dst)
+    data <- list(
+      case.data=case.data,
+      ctrl.data=ctrl.data,
+      locs=locs
+    )
+    save_output(data, paste("data_high_", i, ".json", sep=""), dst=dst)
+  }
   
 }
 
@@ -158,44 +160,3 @@ print(summary(prevalences))
 print(summary(ps_contribs))
 print(summary(obs_cells))
 print(summary(n_specimen))
-
-
-# recover ps-contributions
-# high preferential sampling
-src <- "/Users/brianconroy/Documents/research/dataInt/output/sim_iteration/"
-ps_high <- c()
-Alpha.case <- 1
-Alpha.ctrl <- -0.25
-beta.case <- c(-1.5, 0.25, 0.25)
-beta.ctrl <- c(3, 1, 0.5)
-beta.loc <- c(-1.5, 1, -0.25)
-for (i in 1:25){
-  params <- load_output(paste("params_high_", i, ".json", sep=""), src=src)
-  data <- load_output(paste("data_high_", i, ".json", sep=""), src=src)
-  locs <- data$locs
-  W <- params$W
-  ps_high <- c(ps_high, 
-               calc_ps_contribution(caPr.disc, locs, beta.case, Alpha.case, beta.ctrl, Alpha.ctrl, W))
-}
-print(summary(ps_high))
-#Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-#19.38   25.01   32.98   33.23   39.45   58.94 
-
-# low preferential sampling
-ps_low <- c()
-Alpha.case <- 0.5
-Alpha.ctrl <- 0.3
-beta.case <- c(1, 0.75, 0.25)
-beta.ctrl <- c(3, 1, 0.5)
-beta.loc <- c(-1.5, 1, -0.25)
-for (i in 1:25){
-  params <- load_output(paste("params_low_", i, ".json", sep=""), src=src)
-  data <- load_output(paste("data_low_", i, ".json", sep=""), src=src)
-  locs <- data$locs
-  W <- params$W
-  ps_low <- c(ps_low, 
-              calc_ps_contribution(caPr.disc, locs, beta.case, Alpha.case, beta.ctrl, Alpha.ctrl, W))
-}
-print(summary(ps_low))
-#Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-#19.38   25.01   32.98   33.23   39.45   58.94 

@@ -151,7 +151,7 @@ continue_logistic_gp_cov <- function(data, output, n.sample){
   prior_phi <- output$prior_phi
   prior_theta <- output$prior_theta
   
-  more_output <- logisticGpCov(data$loc$status, data$loc$x.scaled, 
+  more_output <- logisticGp(data$loc$status, data$loc$x.scaled, 
                                d, n.sample, burnin=0, L_beta=L_beta, L_w=L_w, proposal.sd.theta=proposal.sd.theta,
                                w_initial=w_initial, theta_initial=theta_initial, phi_initial=phi_initial,
                                beta_initial=beta_initial,

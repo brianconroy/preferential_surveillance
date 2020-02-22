@@ -132,7 +132,7 @@ preferentialSampling <- function(data, d, n.sample, burnin,
     ## sample from w
     sigma.i <- Exponential(d, range=theta.i, phi=phi.i)
     sigma.inv.i <- solve(sigma.i)
-    w.out.i <- wHmcUpdateV2(Y.l, X.c, X.loc, Y.ca, alpha.ca.i, beta.ca, beta.loc, Y.co,
+    w.out.i <- wHmcUpdate(Y.l, X.c, X.loc, Y.ca, alpha.ca.i, beta.ca, beta.loc, Y.co,
                             alpha.co.i, beta.co, w.i, sigma.i, sigma.inv.i, locs, w_tuning$delta_curr, L_w, offset=0)
     w.i <- w.out.i$w
     
