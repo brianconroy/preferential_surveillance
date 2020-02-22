@@ -23,7 +23,7 @@ agg_factor <- 10
 
 #### Prism principal components
 caPr <- load_prism_pcs()
-caPr.disc <- aggregate(caPr, fact=9)
+caPr.disc <- aggregate(caPr, fact=agg_factor)
 print(n_values(caPr.disc[[1]]))
 plot(caPr.disc)
 

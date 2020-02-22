@@ -237,7 +237,7 @@ n_sims <- 25
 agg_factor <- 10
 
 #### Prism Principal Components
-caPr <- load_prism_pcs2()
+caPr <- load_prism_pcs()
 caPr.disc <- aggregate(caPr, fact=agg_factor)
 n_values(caPr.disc[[1]])
 plot(caPr.disc)
@@ -245,7 +245,7 @@ cells.all <- c(1:ncell(caPr.disc))[!is.na(values(caPr.disc[[1]]))]
 coords <- xyFromCell(caPr.disc, cell=cells.all)
 d <- as.matrix(dist(coords, diag=TRUE, upper=TRUE))
 
-for (i in 2:n_sims){
+for (i in 1:n_sims){
   
   print(paste("dataset", i))
   data <- load_output(paste("data_high_", i, ".json", sep=""), src=src)
@@ -257,9 +257,9 @@ for (i in 2:n_sims){
   Phi <- params$Phi
   prior_theta <- get_gamma_prior(Theta, 5)
   prior_phi <- get_igamma_prior(Phi, 5)
-  w_output <- logisticGpCov(y=data$locs$status, x=data$locs$x.scaled, d, n.sample=1500, burnin=500, L_beta=8, L_w=8, proposal.sd.theta=0.3,
-                            w_initial=NULL, theta_initial=NULL, phi_initial=NULL, beta_initial=NULL,
-                            prior_phi=prior_phi, prior_theta=prior_theta)
+  w_output <- logisticGp(y=data$locs$status, x=data$locs$x.scaled, d, n.sample=1500, burnin=500, L_beta=8, L_w=8, proposal.sd.theta=0.3,
+                         w_initial=NULL, theta_initial=NULL, phi_initial=NULL, beta_initial=NULL,
+                         prior_phi=prior_phi, prior_theta=prior_theta)
   
   w_initial <- colMeans(w_output$samples.w)
   theta_initial <- mean(w_output$samples.theta)
@@ -311,7 +311,7 @@ for (i in 2:n_sims){
   target_loc=0.65
   
   # Run fit
-  output <- prefSampleGpV2(data, d, n.sample, burnin,
+  output <- preferentialSampling(data, d, n.sample, burnin,
                            L_w, L_ca, L_co, L_a_ca, L_a_co,
                            proposal.sd.theta=proposal.sd.theta,
                            m_aca=m_aca, m_aco=m_aco, m_ca=m_ca, m_co=m_co, m_w=m_w, 
@@ -336,7 +336,7 @@ for (i in 2:n_sims){
   beta.ctrl <- params$beta.ctrl
   W <- params$W
   
-  X.standard <- load_x_standard2(as.logical(data$locs$status), agg_factor=agg_factor)
+  X.standard <- load_x_standard(as.logical(data$locs$status), agg_factor=agg_factor)
   lodds.true <- X.standard %*% beta.case + Alpha.case * W - X.standard %*% beta.ctrl - Alpha.ctrl * W
   lodds.ps <- X.standard %*% beta_ca_h + alpha_ca_h * w.hat - X.standard %*% beta_co_h - alpha_co_h * w.hat
   plot(x=lodds.true, y=lodds.ps, main='A)', xlab='True Log Odds', ylab='Estimated Log Odds'); abline(0, 1, col='2')
