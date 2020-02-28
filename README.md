@@ -4,12 +4,14 @@
 
 # Simulation
 
-# Test Scripts
+# Test Scripts To Make
+  * hamiltonian monte carlo
+  * model fitting script
 
 # To Test
   * x-simulation_data
   * x-simulation
-  * simulation_analysis
+  * x-simulation_analysis
 
   * data_analysis_fits
   * data_analysis_summary

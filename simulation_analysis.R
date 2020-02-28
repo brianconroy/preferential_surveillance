@@ -6,6 +6,7 @@
 ###############################
 
 
+library(raster)
 library(gridExtra)
 library(grid)
 library(ggplot2)
@@ -21,7 +22,7 @@ agg_factor <- 10
 n_sims <- 25
 
 #### Prism Principal Components
-caPr <- load_prism_pcs2()
+caPr <- load_prism_pcs()
 caPr.disc <- aggregate(caPr, fact=agg_factor)
 n_values(caPr.disc[[1]])
 plot(caPr.disc)
@@ -76,7 +77,7 @@ for (i in 1:n_sims){
   bias_beta_co_low[i,] <- beta_co_h - params$beta.ctrl
   
   # RMSE
-  X.standard <- load_x_standard2(as.logical(data$locs$status), agg_factor=agg_factor)
+  X.standard <- load_x_standard(as.logical(data$locs$status), agg_factor=agg_factor)
   lodds.true <- X.standard %*% beta.case + Alpha.case * W - X.standard %*% beta.ctrl - Alpha.ctrl * W
   lodds.ps <- X.standard %*% beta_ca_h + alpha_ca_h * w.hat - X.standard %*% beta_co_h - alpha_co_h * w.hat
   plot(x=lodds.true, y=lodds.ps, main='A)', xlab='True Log Odds', ylab='Estimated Log Odds'); abline(0, 1, col='2')
@@ -180,7 +181,7 @@ for (i in 1:n_sims){
   bias_beta_co_high[i,] <- beta_co_h - params$beta.ctrl
   
   # # RMSE
-  X.standard <- load_x_standard2(as.logical(data$locs$status), agg_factor=agg_factor)
+  X.standard <- load_x_standard(as.logical(data$locs$status), agg_factor=agg_factor)
   lodds.true <- X.standard %*% beta.case + Alpha.case * W - X.standard %*% beta.ctrl - Alpha.ctrl * W
   lodds.ps <- X.standard %*% beta_ca_h + alpha_ca_h * w.hat - X.standard %*% beta_co_h - alpha_co_h * w.hat
   plot(x=lodds.true, y=lodds.ps, main='A)', xlab='True Log Odds', ylab='Estimated Log Odds'); abline(0, 1, col='2')
@@ -598,12 +599,6 @@ print(round(mean(estimated_aca_high), 3))
 print(round(mean(estimated_aco_high), 3))
 print(round(mean(estimated_aca_low), 3))
 print(round(mean(estimated_aco_low), 3))
-
-print(round(mean(estimated_aca_low_n), 3))
-print(round(mean(estimated_aco_low_n), 3))
-print(round(mean(estimated_aca_high_n), 3))
-print(round(mean(estimated_aco_high_n), 3))
-
 
 ## n >= 75 datasets
 
