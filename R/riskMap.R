@@ -62,3 +62,10 @@ calc_significance <- function(samples.risk, r, threshold){
   ))
   
 }
+
+
+calc_risk <- function(lodds){
+  
+  return(exp(lodds)/(1 + exp(lodds)))
+  
+}

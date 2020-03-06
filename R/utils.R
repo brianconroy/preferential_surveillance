@@ -340,13 +340,6 @@ replace_vals <- function(df, column, val, replacement){
 }
 
 
-calc_risk <- function(lodds){
-  
-  return(exp(lodds)/(1 + exp(lodds)))
-  
-}
-
-
 ig_var <- function(a, b){
   
   return(b^2/((a-1)^2 * (a-2)))

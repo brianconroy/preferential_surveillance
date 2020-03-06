@@ -27,7 +27,7 @@ library(prism)
 
 
 # Download files
-options(prism.path="prism")
+options(prism.path="data/prism_raw")
 prism::get_prism_normals(type= "tmean"
                          ,resolution="4km"
                          ,annual = TRUE
