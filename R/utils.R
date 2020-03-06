@@ -1,5 +1,133 @@
 
 
+equalize_scales <- function(r1, r2){
+  
+  v1 <- r1[][!is.na(r1[])]
+  v2 <- r2[][!is.na(r2[])]
+  r_max <- max(v1, v2)
+  r_min <- min(v1, v2)
+  if (sum(v1 == r_max) == 0){
+    v1[length(v1)] <- r_max
+  } else{
+    v2[length(v1)] <- r_max
+  }
+  if (sum(v1 == r_min) == 0){
+    v1[1] <- r_min
+  } else{
+    v2[1] <- r_min
+  }
+  r1[][!is.na(r1[])] <- v1
+  r2[][!is.na(r2[])] <- v2
+  return(list(r1, r2))
+  
+}
+
+
+load_x_ca <- function(factor=NULL){
+  
+  caPr <- load_prism_pcs()
+  if (!is.null(factor)){
+    caPr <- aggregate(caPr, fact=factor)
+    x_1 <- caPr[[1]][]
+    x_1 <- x_1[][!is.na(x_1[])]
+    x_2 <- caPr[[2]][]
+    x_2 <- x_2[][!is.na(x_2[])]
+  } else {
+    pc1 <- mask(caPr[[1]], caPr[[2]])
+    pc2 <- caPr[[2]]
+    x_1 <- pc1[]
+    x_1 <- x_1[][!is.na(x_1[])]
+    x_2 <- pc2[]
+    x_2 <- x_2[][!is.na(x_2[])]
+  }
+  
+  mu_1 <- mean(x_1)
+  sd_1 <- sd(x_1)
+  mu_2 <- mean(x_2)
+  sd_2 <- sd(x_2)
+  
+  x_1_std <- (x_1 - mu_1)/sd_1
+  x_2_std <- (x_2 - mu_2)/sd_2
+  x_std <- array(1, c(length(x_1), 1))
+  x_std <- cbind(x_std, x_1_std, x_2_std)
+  return(x_std)
+  
+}
+
+
+assemble_data <- function(rodents, loc.disc, caPr.disc){
+  
+  coords_all <- cbind(matrix(rodents$Lon_Add_Fix), rodents$Lat_Add_Fix)
+  loc.disc <- caPr.disc[[1]]
+  cells_all <- cellFromXY(loc.disc, coords_all)
+  cells_all <- cells_all[!is.na(cells_all[])]
+  cells_obs <- sort(unique(cells_all))
+  
+  # positive counts at each cell
+  rodents_pos <- rodents[rodents$Res == 'POS',]
+  coords_pos <- cbind(matrix(rodents_pos$Lon_Add_Fix), rodents_pos$Lat_Add_Fix)
+  cells_pos <- cellFromXY(loc.disc, coords_pos)
+  counts_pos <- data.frame(table(cells_pos))
+  names(counts_pos) <- c('cell', 'count_pos')
+  
+  # negative counts at each cell
+  rodents_neg <- rodents[rodents$Res == 'NEG',]
+  coords_neg <- cbind(matrix(rodents_neg$Lon_Add_Fix), rodents_neg$Lat_Add_Fix)
+  cells_neg <- cellFromXY(loc.disc, coords_neg)
+  counts_neg <- data.frame(table(cells_neg))
+  names(counts_neg) <- c('cell', 'count_neg')
+  
+  # combine counts
+  counts_all <- merge(counts_pos, counts_neg, by='cell', all=T)
+  counts_all$cell <- as.numeric(as.character(counts_all$cell))
+  if (sum(is.na(counts_all$count_pos))){
+    counts_all[is.na(counts_all$count_pos),]$count_pos <- 0
+  } 
+  if (sum(is.na(counts_all$count_neg))){
+    counts_all[is.na(counts_all$count_neg),]$count_neg <- 0
+  }
+  counts_all <- counts_all[with(counts_all, order(cell)),]
+  
+  # location data
+  all_ids <- c(1:length(loc.disc[]))[!is.na(loc.disc[])]
+  locs <- list(
+    cells=cells_obs,
+    status=1 * c(all_ids %in% cells_obs),  
+    coords=xyFromCell(loc.disc, cells_obs)
+  )
+  locs$ids <- c(1:length(all_ids))[as.logical(locs$status)]
+  
+  # case data
+  cov.disc <- caPr.disc
+  x1 <- cov.disc[[1]][][locs$cells]
+  x2 <- cov.disc[[2]][][locs$cells]
+  x1.standardised <- (x1 - mean(x1))/sd(x1)
+  x2.standardised <- (x2 - mean(x2))/sd(x2)
+  x <- cbind(1, x1, x2)
+  x.standardised <- cbind(1, x1.standardised, x2.standardised)
+  
+  case.data <- list(
+    y=counts_all$count_pos,
+    x.standardised=x.standardised,
+    x=x,
+    p=3
+  )
+  
+  # control data
+  ctrl.data <- list(
+    y=counts_all$count_neg,
+    x.standardised=x.standardised,
+    x=x,
+    p=3
+  )
+  
+  data <- list(loc=locs, case.data=case.data, ctrl.data=ctrl.data)
+  
+  return(data)
+  
+}
+
+
 reformat_saved_data <- function(data){
   new_locs <- list()
   new_case.data <- list()

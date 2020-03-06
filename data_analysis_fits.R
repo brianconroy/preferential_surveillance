@@ -1,10 +1,11 @@
 
+library(raster)
 library(mvtnorm)
 library(R.utils)
 sourceDirectory('R/')
 
 
-caPr <- load_prism_pcs2()
+caPr <- load_prism_pcs()
 caPr.disc <- aggregate(caPr, fact=5)
 N <- n_values(caPr.disc[[1]])
 plot(caPr.disc)
@@ -95,6 +96,7 @@ ctrl.data <- list(
   x=x,
   p=3
 )
+print(sum(ctrl.data$y)) # 20366
 
 coords <- xyFromCell(caPr.disc, cell=all_ids)
 d <- as.matrix(dist(coords, diag=TRUE, upper=TRUE))
@@ -193,7 +195,7 @@ print(output$accept)
 
 output <- burnin_after(output, n.burn=2000)
 
-output <- continueMCMC(data, d, output, n.sample=9000)
+output <- continue_mcmc(data, d, output, n.sample=9000)
 
 plot(apply(output$samples.w, 1, mean), type='l')
 view_tr_w(output$samples.w)
@@ -325,103 +327,3 @@ w_co_est <- combine_w(w.hat_spco, kriged_w_co$mu.new, as.logical(locs$status))
 output.sp_co$description <- "cdph_spatial_poisson_ctrl"
 save_output(output.sp_co, "output_cdph_baseline_spatial_poisson_ctrl.json")
 save_output(kriged_w_co, "output_cdph_baseline_krige_co.json")
-
-
-###########
-# downscale
-###########
-
-# interpolate w
-w.hat <- colMeans(output$samples.w)
-rw <- caPr.disc[[1]]
-rw[][!is.na(rw[])] <- w.hat
-
-xy <- data.frame(xyFromCell(rw, 1:ncell(rw)))
-v <- getValues(rw)
-
-tps <- Tps(xy, v)
-p <- raster(caPr[[2]])
-p <- interpolate(p, tps)
-p <- mask(p, caPr[[1]])
-w.hat_ds <- p[][!is.na(p[])]
-
-par(mfrow=c(1,2))
-plot(rw)
-plot(p)
-
-par(mfrow=c(1,2))
-plot(rw)
-plot(rw)
-points(locs$coords, col=1, pch=16)
-
-################
-# calculate risk 
-# surfaces
-################
-
-alpha.ca.hat <- mean(output$samples.alpha.ca)
-alpha.co.hat <- mean(output$samples.alpha.co)
-beta.ca.hat <- colMeans(output$samples.beta.ca)
-beta.co.hat <- colMeans(output$samples.beta.co)
-
-# low resolution
-X_low <- load_x_ca(factor=5)
-lodds_low <- X_low %*% beta.ca.hat + alpha.ca.hat * w.hat - X_low %*% beta.co.hat - alpha.co.hat * w.hat
-risk_low <- exp(lodds_low/(1 - lodds_low))
-
-r_lodds_low <- caPr.disc[[1]]
-r_lodds_low[][!is.na(r_lodds_low[])] <- lodds_low
-plot(r_lodds_low)
-
-r_risk_low <- caPr.disc[[1]]
-r_risk_low[][!is.na(r_risk_low[])] <- risk_low
-plot(r_risk_low)
-
-# high resolution
-X_high <- load_x_ca()
-lodds_high <- X_high %*% beta.ca.hat + alpha.ca.hat * w.hat_ds - X_high %*% beta.co.hat - alpha.co.hat * w.hat_ds
-risk_high <- exp(lodds_high/(1-lodds_high))
-
-r_lodds_high <- caPr[[2]]
-r_lodds_high[][!is.na(r_lodds_high[])] <- lodds_high
-plot(r_lodds_high)
-
-r_risk_high <- caPr[[2]]
-r_risk_high[][!is.na(r_risk_high[])] <- risk_high
-
-pal <- colorRampPalette(c("blue","red"))
-plot(r_risk_high, col=pal(15))
-
-par(mfrow=c(1,2))
-plot(r_lodds_low)
-plot(r_lodds_high)
-
-# compare to naive model
-mod.ca <- glm(case.data$y ~ case.data$x.standardised - 1, family='poisson')
-mod.co <- glm(ctrl.data$y ~ ctrl.data$x.standardised - 1, family='poisson')
-
-beta.ca.hat_p <- unname(coefficients(mod.ca))
-beta.co.hat_p <- unname(coefficients(mod.co))
-
-lodds_low_p <- X_low %*% beta.ca.hat_p - X_low %*% beta.co.hat_p
-r_lodds_low_p <- caPr.disc[[1]]
-r_lodds_low_p[][!is.na(r_lodds_low_p[])] <- lodds_low_p
-plot(r_lodds_low_p)
-
-lodds_high_p <- X_high %*% beta.ca.hat_p - X_high %*% beta.co.hat_p
-risk_high_p <- exp(lodds_high_p/(1-lodds_high_p))
-
-r_lodds_high_p <- caPr[[2]]
-r_lodds_high_p[][!is.na(r_lodds_high_p[])] <- lodds_high_p
-plot(r_lodds_high_p)
-
-r_risk_high_p <- caPr[[2]]
-r_risk_high_p[][!is.na(r_risk_high_p[])] <- risk_high_p
-plot(r_risk_high_p)
-
-par(mfrow=c(1,2))
-plot(r_lodds_high_p)
-plot(r_lodds_high)
-
-plot(y=r_lodds_high_p[], x=r_lodds_high[], xlab='log odds (preferential sampling)', ylab='log odds (poisson)'); abline(0, 1, col=2)
-plot(y=r_risk_high_p[], x=r_risk_high[], xlab='risk (preferential sampling)', ylab='risk (poisson)'); abline(0, 1, col=2)

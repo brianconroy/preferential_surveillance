@@ -56,6 +56,7 @@ alphaHmcUpdate <- function(y, w, x, beta, alpha, delta_a, prior_mean, prior_var,
 }
 
 
+# Potential energy
 Ualpha <- function(y, w, x, beta, alpha, prior_mean, prior_var, offset){
   
   # likelihood
@@ -73,6 +74,7 @@ Ualpha <- function(y, w, x, beta, alpha, prior_mean, prior_var, offset){
 }
 
 
+# Gradient
 dU_alpha <- function(y, w, x, beta, alpha, prior_mean, prior_var, offset){
   
   grad <- 0
