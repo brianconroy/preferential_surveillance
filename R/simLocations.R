@@ -1,15 +1,15 @@
 library(fields)
 library(MASS)
+library(raster)
 
-
-simLocations <- function(r, beta, w, seed=NULL){
+simLocations <- function(r, beta, w, cells.all, d, seed=NULL){
   
   
-  # intercept, standardised
+  # intercept, standardized
   k <- length(values(r[[1]])[!is.na(values(r[[1]]))])
   x <- array(1, c(k, 1))
   x.scaled <- x
-  for (i in 1:length(names(r))){
+  for (i in 1:length(names(r))) {
     x.i <- values(r[[i]])
     x.i <- x.i[!is.na(x.i)]
     x.scaled.i <- (x.i - mean(x.i))/sd(x.i)
@@ -21,15 +21,15 @@ simLocations <- function(r, beta, w, seed=NULL){
   # simulate survey occupancy
   lin.pred <- x.scaled %*% beta + w
   probs <- exp(lin.pred)/(1 + exp(lin.pred))
-  if (!is.null(seed)){ set.seed(seed) }
+  if (!is.null(seed)) { set.seed(seed) }
   status <- sapply(probs, function(x){
-    rbinom(n=1, size=1, x)})
+    rbinom(n = 1, size = 1, x)})
   
   
   # ids of observed cells
   ids <- c()
-  for (i in 1:length(status)){
-    if (as.logical(status[i])){
+  for (i in 1:length(status)) {
+    if (as.logical(status[i])) {
       ids <- c(ids, i)
     }
   }
@@ -39,7 +39,7 @@ simLocations <- function(r, beta, w, seed=NULL){
   output <- list()
   output$status <- status
   output$cells <- cells
-  output$coords <- xyFromCell(r[[1]], cell=cells)
+  output$coords <- xyFromCell(r[[1]], cell = cells)
   output$probs <- probs
   output$p <- ncol(x)
   output$x <- x
