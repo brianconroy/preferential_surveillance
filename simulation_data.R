@@ -29,8 +29,26 @@ simulate_data <- function(label, disc, n_sims=25, save_dir=NULL,
                           beta.case=NULL, beta.ctrl=NULL, beta.loc=NULL,
                           Theta=6, Phi=12){
   
+  # Alpha.case: represents the strength of preferential sampling on 
+  # observed distributions of cases (disease positive specimen). 
+  # The greater Alpha.case, the stronger the dependence between 
+  # sampling location and the abundance of cases. 
+  
+  # Alpha.ctrl: same interpretation as Alpha.case but for controls
+  # (disease negative specimen).
+
+  # beta.case: parameters for fixed effect covariates associated w/ the spatial
+  # distribution of cases. The vector consists of an intercept 
+  # (first element) and as many additional parameters as there are 
+  # layers in the "disc" raster
+  
+  # beta.ctrl: same as above but for controls.
+  
+  # beta.loc: parameters for fixed effect covariates associated with the spatial
+  # distribution of observation sites.
+  
   if (label == "low") {
-    Alpha.case <- 0.5
+    Alpha.case <- 0.5 
     Alpha.ctrl <- 0.3
     beta.case <- c(1, 0.75, 0.25)
     beta.ctrl <- c(3, 1, 0.5)
@@ -61,6 +79,7 @@ simulate_data <- function(label, disc, n_sims=25, save_dir=NULL,
     locs <- simLocations(disc, beta.loc, w = W, cells.all = cells.all, d = d)
     obs_cells <- c(obs_cells, sum(locs$status))
     
+    # the measure of the effects of preferential sampling on observed risk
     ps_contribs <- c(ps_contribs, 
                      calc_ps_contribution(disc, locs, beta.case, Alpha.case, beta.ctrl, Alpha.ctrl, W))
     
