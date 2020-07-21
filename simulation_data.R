@@ -37,14 +37,14 @@ simulate_data <- function(label, disc, n_sims=25, save_dir=NULL,
   # Alpha.ctrl: same interpretation as Alpha.case but for controls
   # (disease negative specimen).
 
-  # beta.case: fixed effect covariates associated with the spatial
+  # beta.case: parameters for fixed effect covariates associated w/ the spatial
   # distribution of cases. The vector consists of an intercept 
-  # (first element) and as many covariates as there are layers 
-  # in the "disc" raster
+  # (first element) and as many additional parameters as there are 
+  # layers in the "disc" raster
   
   # beta.ctrl: same as above but for controls.
   
-  # beta.loc: fixed effect covariates associated with the spatial
+  # beta.loc: parameters for fixed effect covariates associated with the spatial
   # distribution of observation sites.
   
   if (label == "low") {
