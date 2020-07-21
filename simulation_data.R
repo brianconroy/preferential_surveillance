@@ -79,6 +79,7 @@ simulate_data <- function(label, disc, n_sims=25, save_dir=NULL,
     locs <- simLocations(disc, beta.loc, w = W, cells.all = cells.all, d = d)
     obs_cells <- c(obs_cells, sum(locs$status))
     
+    # the measure of the effects of preferential sampling on observed risk
     ps_contribs <- c(ps_contribs, 
                      calc_ps_contribution(disc, locs, beta.case, Alpha.case, beta.ctrl, Alpha.ctrl, W))
     
