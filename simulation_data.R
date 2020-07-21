@@ -31,16 +31,16 @@ simulate_data <- function(label, disc, n_sims=25, save_dir=NULL,
   
   # Alpha.case: represents the strength of preferential sampling on 
   # observed distributions of cases (disease positive specimen). 
-  # The greater Alpha.case, the tronger the dependence between 
+  # The greater Alpha.case, the stronger the dependence between 
   # sampling location and the abundance of cases. 
   
   # Alpha.ctrl: same interpretation as Alpha.case but for controls
   # (disease negative specimen).
 
   # beta.case: fixed effect covariates associated with the spatial
-  # distribution of cases.
-  # The vector consists of an intercept (first element) and as many covariates
-  # as there are layers in the "disc" raster
+  # distribution of cases. The vector consists of an intercept 
+  # (first element) and as many covariates as there are layers 
+  # in the "disc" raster
   
   # beta.ctrl: same as above but for controls.
   
