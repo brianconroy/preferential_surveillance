@@ -19,6 +19,6 @@ continue_mcmc(data, D, output, n.sample)
 a list of posterior samples and associated quantities
 }
 \description{
-This function continues to run the MCMC sampling routing for the 
+This function continues to run the MCMC sampling routine for the 
 preferentialSampling model.
 }
