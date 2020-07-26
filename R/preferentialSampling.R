@@ -1,5 +1,55 @@
 
 
+#' Title
+#'
+#' @param data List. Data input containing case, control counts, covariates.
+#' @param d Matrix. Distance matrix for grid cells in study region.
+#' @param n.sample Numeric. Number of MCMC samples to generate.
+#' @param burnin Numeric. Number of MCMC samples to discard as burnin.
+#' @param L_w Numeric. HMC simulation length parameter for spatial random effects.
+#' @param L_ca Numeric. HMC simulation length parameter for case covariates.
+#' @param L_co Numeric. HMC simulation length parameter for control covariates.
+#' @param L_a_ca Numeric. HMC simulation length parameter for case preferential sampling parameter.
+#' @param L_a_co Numeric. HMC simulation length parameter for control preferential sampling parameter.
+#' @param proposal.sd.theta Numeric. Standard deviation of proposal distribution for spatial range parameter.
+#' @param m_aca Numeric. Number of samples to apply self tuning for case preferential sampling parameter.
+#' @param m_aco Numeric. Number of samples to apply self tuning for control preferential sampling parameter.
+#' @param m_ca Numeric. Number of samples to apply self tuning for case covariates.
+#' @param m_co Numeric. Number of samples to apply self tuning for control covariates.
+#' @param m_w Numeric. Number of samples to apply self tuning for spatial random effects.
+#' @param target_aca Numeric. Target acceptance rate for case preferential sampling parameter.
+#' @param target_aco Numeric. Target acceptance rate for control preferential sampling parameter.
+#' @param target_ca Numeric. Target acceptance rate for case covariates.
+#' @param target_co Numeric. Target acceptance rate for control covariates.
+#' @param target_w Numeric. Target acceptance rate for spatial random effects.
+#' @param target_loc Numeric. Target acceptance rate for locational covariates.
+#' @param self_tune_w Logical. Whether to apply self tuning for spatial random effects.
+#' @param self_tune_aca Logical. Whether to apply self tuning for case preferential sampling paramter.
+#' @param self_tune_aco Logical. Whether to apply self tuning for control preferential sampling paramter.
+#' @param self_tune_ca Logical. Whether to apply self tuning for case covariates.
+#' @param self_tune_co Logical. Whether to apply self tuning for control covariates.
+#' @param self_tune_loc Logical. Whether to apply self tuning for locational covariates.
+#' @param delta_w Numeric. Required if self_tune_w is FALSE. HMC step size for spatial random effects.
+#' @param delta_aca Numeric. Required if self_tune_w is FALSE. HMC step size for case preferential sampling parameter.
+#' @param delta_aco Numeric. Required if self_tune_w is FALSE. HMC step size for control preferential sampling parameter.
+#' @param delta_ca Numeric. Required if self_tune_w is FALSE. HMC step size for case covariates.
+#' @param delta_co Numeric. Required if self_tune_w is FALSE. HMC step size for control covariates.
+#' @param delta_loc Numeric. Required if self_tune_w is FALSE. HMC step size for locational covariates.
+#' @param beta_ca_initial Numeric. Initial MCMC value for case covariate parameter.
+#' @param beta_co_initial Numeric. Initial MCMC value for control covariate parameter.
+#' @param alpha_ca_initial Numeric. Initial MCMC value for case preferential sampling parameter.
+#' @param alpha_co_initial Numeric. Initial MCMC value for control preferential sampling parameter.
+#' @param beta_loc_initial Numeric. Initial MCMC value for locational covariate parameter.
+#' @param theta_initial Numeric. Initial MCMC value for spatial range parameter.
+#' @param phi_initial Numeric. Initial MCMC value for spatial marginal variance parameter.
+#' @param w_initial Numeric. Initial MCMC value for spatial random effects.
+#' @param prior_phi List. Shape and scale values for prior distribution (Inverse Gamma) of marginal variance.
+#' @param prior_theta List. Shape and scale values for prior distribution (Gamma) of spatial range.
+#' @param prior_alpha_ca_var List. Prior (Independent Normal) variance of case covariates.
+#' @param prior_alpha_co_var List. Prior (Independent Normal) variance of control covariates.
+#'
+#' @return List containing posterior samples and associated tuning values.
+#' @export
 preferentialSampling <- function(data, d, n.sample, burnin,
                                  L_w, L_ca, L_co, L_a_ca, L_a_co,
                                  proposal.sd.theta=0.3,
@@ -254,6 +304,16 @@ preferentialSampling <- function(data, d, n.sample, burnin,
 }
 
 
+#' Apply Burnin to MCMC Samples
+#' 
+#' This function truncates the first n.burn posterior samples of the
+#' output of the preferentialSampling function.
+#'
+#' @param output List. Output of the preferentialSampling.
+#' @param n.burn Numeric. Number of samples to discard in burnin.
+#'
+#' @return List. Identical to the output of preferentialSampling but with truncated posterior samples.
+#' @export
 burnin_after <- function(output, n.burn){
   
   n.curr <- output$n.sample - output$burnin
@@ -273,6 +333,18 @@ burnin_after <- function(output, n.burn){
 }
 
 
+#' Continue running MCMC
+#' 
+#' This function continues to run the MCMC sampling routine for the 
+#' preferentialSampling model.
+#'
+#' @param data List. Input data for the model.
+#' @param D Matrix. distance matrix describing grid cells in study region.
+#' @param output List. Output of the preferentialSampling function.
+#' @param n.sample Numeric. Number of additional MCMC samples to generate.
+#'
+#' @return a list of posterior samples and associated quantities
+#' @export
 continue_mcmc <- function(data, D, output, n.sample){
   
   # get initial values
