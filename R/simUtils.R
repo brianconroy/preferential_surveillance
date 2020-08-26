@@ -130,8 +130,6 @@ calc_log_odds_output <- function(output, true_params){
 #' @return (list) list of lists containing parameter
 #' estimates, true values and biases of different models
 #' @export
-#'
-#' @examples
 table_params <- function(outputs, sampling, prevalence){
   
   output_ps <- get_output(outputs, sampling, prevalence, 'prefSampleGpCC')
@@ -467,8 +465,6 @@ padded_plot2 <- function(y, ylab=''){
 #'
 #' @return
 #' @export
-#'
-#' @examples
 plot_traces <- function(outputs, sampling, prevalence){
   
   output <- get_output(outputs, sampling, prevalence, 'prefSampleGpCC')
@@ -620,8 +616,6 @@ calc_log_odds_true_general <- function(true_params){
 #'
 #' @return
 #' @export
-#'
-#' @examples
 calc_log_odds_sp <- function(outputs, sampling, prevalence){
   
   tag <- paste(sampling, prevalence, sep='_')
@@ -665,8 +659,6 @@ calc_log_odds_sp <- function(outputs, sampling, prevalence){
 #'
 #' @return
 #' @export
-#'
-#' @examples
 calc_log_odds_pr <- function(sampling, prevalence){
   
   betas <- load_params(paste('estimates_poisson_prefSampleGpCC_', sampling, '_', prevalence, '.json', sep=''))
@@ -685,6 +677,7 @@ calc_log_odds_pr <- function(sampling, prevalence){
 #'
 #' @param output (list) output of an MCMC function
 #' @param fname (character) file name
+#' @param dst (character) directory in which to save file
 #'
 #' @return writes output as json file
 #'
@@ -698,12 +691,11 @@ save_output <- function(output, fname, dst="/Users/brianconroy/Documents/researc
 
 #' load_output
 #'
-#' @param file (character) name of output JSON file to be loaded
+#' @param fname (character) name of output JSON file to be loaded
+#' @param src (character) source directory of file
 #'
 #' @return (list) loaded output
 #' @export
-#'
-#' @examples load_output("prefSampleGpCC_med.json")
 load_output <- function(fname, src="/Users/brianconroy/Documents/research/dataInt/output/"){
   
   path <- paste(src, fname, sep="")

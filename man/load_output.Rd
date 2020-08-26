@@ -18,6 +18,3 @@ load_output(
 \description{
 load_output
 }
-\examples{
-load_output("prefSampleGpCC_med.json")
-}

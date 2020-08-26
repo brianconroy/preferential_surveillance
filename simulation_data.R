@@ -2,13 +2,13 @@
 # Simulate datasets
 ###################
 
-library(fields)
-library(MASS)
-library(mvtnorm)
-library(plyr)
-library(R.utils)
-library(raster)
-library(sp)
+# library(fields)
+# library(MASS)
+# library(mvtnorm)
+# library(plyr)
+# library(R.utils)
+# library(raster)
+# library(sp)
 
 R.utils::sourceDirectory('R/')
 
