@@ -6,14 +6,14 @@
 ###############################
 
 
-library(raster)
-library(gridExtra)
-library(grid)
-library(ggplot2)
-library(lattice)
-library(plyr)
-library(mvtnorm)
-library(R.utils)
+# library(raster)
+# library(gridExtra)
+# library(grid)
+# library(ggplot2)
+# library(lattice)
+# library(plyr)
+# library(mvtnorm)
+# library(R.utils)
 sourceDirectory('R/')
 
 
@@ -246,22 +246,22 @@ points(x=n_cells_obs_high, y=rmse_pr_high, col=2)
 # High
 df2 <- data.frame(cbind(c(rmse_ps_high, rmse_sp_high, rmse_pr_high)))
 names(df2) <- "RMSE"
-df2$Model <- c(rep("PS", length(rmse_ps_high)), 
-               rep("SP", length(rmse_ps_high)),
-               rep("PR", length(rmse_pr_high)))
+df2$Model <- c(rep("Pref-S", length(rmse_ps_high)), 
+               rep("Spat-P", length(rmse_ps_high)),
+               rep("Pois-R", length(rmse_pr_high)))
 df2$Sampling <- rep("High", 3*length(rmse_ps_high))
 
 # Low
 df1 <- data.frame(cbind(c(rmse_ps_low, rmse_sp_low, rmse_pr_low)))
 names(df1) <- "RMSE"
-df1$Model <- c(rep("PS", length(rmse_ps_high)), 
-               rep("SP", length(rmse_ps_high)),
-               rep("PR", length(rmse_pr_high)))
+df1$Model <- c(rep("Pref-S", length(rmse_ps_high)), 
+               rep("Spat-P", length(rmse_ps_high)),
+               rep("Pois-R", length(rmse_pr_high)))
 df1$Sampling <- rep("Low", 3*length(rmse_ps_high))
 
 # Combined
 df <- rbind(df1, df2)
-df$Model <- factor(df$Model,levels=c("PS", "SP", "PR"))
+df$Model <- factor(df$Model,levels=c("Pref-S", "Spat-P", "Pois-R"))
 
 # Plot
 p1 <- ggplot() + 
@@ -281,22 +281,22 @@ low_geq75 <- n_cells_obs_low >= 75
 # High
 df2_75 <- data.frame(cbind(c(rmse_ps_high[high_geq75], rmse_sp_high[high_geq75], rmse_pr_high[high_geq75])))
 names(df2_75) <- "RMSE"
-df2_75$Model <- c(rep("PS", sum(high_geq75)), 
-                  rep("SP", sum(high_geq75)),
-                  rep("PR", sum(high_geq75)))
+df2_75$Model <- c(rep("Pref-S", sum(high_geq75)), 
+                  rep("Spat-P", sum(high_geq75)),
+                  rep("Pois-R", sum(high_geq75)))
 df2_75$Sampling <- rep("High", 3*sum(high_geq75))
 
 # Low
 df1_75 <- data.frame(cbind(c(rmse_ps_low[low_geq75], rmse_sp_low[low_geq75], rmse_pr_low[low_geq75])))
 names(df1_75) <- "RMSE"
-df1_75$Model <- c(rep("PS", sum(low_geq75)), 
-                  rep("SP", sum(low_geq75)),
-                  rep("PR", sum(low_geq75)))
+df1_75$Model <- c(rep("Pref-S", sum(low_geq75)), 
+                  rep("Spat-P", sum(low_geq75)),
+                  rep("Pois-R", sum(low_geq75)))
 df1_75$Sampling <- rep("Low", 3*sum(low_geq75))
 
 # Combined
 df_75 <- rbind(df1_75, df2_75)
-df_75$Model <- factor(df_75$Model,levels=c("PS", "SP", "PR"))
+df_75$Model <- factor(df_75$Model,levels=c("Pref-S", "Spat-P", "Pois-R"))
 
 # Plot
 p2 <- ggplot() + 
@@ -331,7 +331,7 @@ p1 <- ggplot(df, aes(x=N, y=RMSE, group=Sampling)) +
   theme_bw() + 
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) +
-  ggtitle("A)")
+  ggtitle("C)")
 
 # Prevalences
 df_prev1 <- data.frame(cbind(prevalences_high, rmse_ps_high))
