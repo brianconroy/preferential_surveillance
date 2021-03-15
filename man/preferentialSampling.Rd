@@ -2,7 +2,7 @@
 % Please edit documentation in R/preferentialSampling.R
 \name{preferentialSampling}
 \alias{preferentialSampling}
-\title{Title}
+\title{preferentialSampling}
 \usage{
 preferentialSampling(
   data,
@@ -147,5 +147,5 @@ preferentialSampling(
 List containing posterior samples and associated tuning values.
 }
 \description{
-Title
+preferentialSampling
 }

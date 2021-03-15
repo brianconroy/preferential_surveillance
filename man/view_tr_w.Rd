@@ -14,7 +14,7 @@ view_tr_w(samples, w_true = NULL, page = 1)
 \item{page}{view offset}
 }
 \value{
-
+NULL. Creates plots.
 }
 \description{
 multipanel (4x4) view of random effect traceplots
