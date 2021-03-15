@@ -25,5 +25,11 @@ Imports:
     np (>= 0.60.9),
     tictoc (>= 1.0),
     foreach (>= 1.4.4),
-    doParallel (>= 1.0.14)
-  
+    doParallel (>= 1.0.14),
+    jsonlite (>= 1.7.0)
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
+Depends: 
+    R (>= 2.10)
