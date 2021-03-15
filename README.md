@@ -1,9 +1,4 @@
-# Overview
-
-# Dependencies
-
-# Simulation
-
-# Test Scripts To Make
-  * hamiltonian monte carlo
-  * model fitting script w/ sim data
+# ToDo
+# Abstract model fitting process
+# Inputs: raster stack of covariates, dataframe of case/control point locations
+# Abstract data simulation process

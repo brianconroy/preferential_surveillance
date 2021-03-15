@@ -1,6 +1,6 @@
 
 
-#' Title
+#' preferentialSampling
 #'
 #' @param data List. Data input containing case, control counts, covariates.
 #' @param d Matrix. Distance matrix for grid cells in study region.

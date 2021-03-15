@@ -1,27 +1,26 @@
 
 
-calc_posterior_risk <- function(output, samples_int){
+# generate posterior risk samples at high resolution
+calc_posterior_risk <- function(output, x, w_ds){
   
-  samples.beta.ca <- output$samples.beta.ca
-  samples.beta.co <- output$samples.beta.co
-  samples.alpha.ca <- output$samples.alpha.ca
-  samples.alpha.co <- output$samples.alpha.co
-  X_high <- load_x_ca()
-  n.samples <- nrow(samples_int)
-  samples.risk <- c()
+  n.samp <- nrow(output$samples.beta.ca)
+  n.cell <- ncol(w_ds)
+  risk_samp <- array(NA, c(n.samp, n.cell))
   
-  samples.l <- lapply(1:n.samples, function(i){
-    w_i <- samples_int[i,]
-    beta.ca_i <- samples.beta.ca[i,]
-    beta.co_i <- samples.beta.co[i,]
-    alpha.ca_i <- samples.alpha.ca[i]
-    alpha.co_i <- samples.alpha.co[i]
-    lodds_i <- X_high %*% beta.ca_i + alpha.ca_i * w_i - X_high %*% beta.co_i - alpha.co_i * w_i
-    t(calc_risk(lodds_i))
-  })
-  samples.risk <- do.call(rbind, samples.l)
+  for (i in 1:n.samp){
+    
+    beta_ca <- output$samples.beta.ca[i,]
+    beta_co <- output$samples.beta.co[i,]
+    alpha_ca <- output$samples.alpha.ca[i]
+    alpha_co <- output$samples.alpha.co[i]
+    w <- w_ds[i]
+    
+    lodds.i <- x %*% beta_ca + alpha_ca * w - x %*% beta_co - alpha_co * w
+    risk_samp[i,] <- t(calc_risk(lodds.i))
+    
+  }
   
-  return(samples.risk)
+  return(risk_samp)
   
 }
 
@@ -33,15 +32,19 @@ calc_significance <- function(samples.risk, r, threshold){
     sum(r_i > threshold)/length(r_i)
   })
   
-  rp <- overlay(pvals, r)
+  # overlay p values on raster
+  rp <- r
+  rp[][!is.na(rp[])] <- pvals
   
   point_est <- sapply(1:ncol(samples.risk), function(i){
     r_i <- samples.risk[,i]
     mean(r_i)
   })
   
-  r_point_est <- overlay(point_est, r)
-  
+  # overlay posterior means onto raster
+  r_point_est <- r
+  r_point_est[][!is.na(r_point_est[])] <- point_est
+
   inds_95 <- 1 * (pvals > 0.95)
   inds_50 <- 1 * (pvals > 0.5)
   inds_25 <- 1 * (pvals > 0.25)
