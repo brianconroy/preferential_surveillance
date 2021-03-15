@@ -17,6 +17,6 @@ combine_w(w_est, w_krige, status)
 vector of combined estimated and kriged random effects
 }
 \description{
-combines estimated and kriged random effects 
-according to cell observation status
+Combines estimated and kriged random effects 
+according to cell observation status.
 }

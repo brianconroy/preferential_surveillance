@@ -1,4 +1,3 @@
-library(jsonlite)
 
 
 calc_ps_contribution <- function(cov.disc, locs, beta.case, alpha.case, beta.ctrl, alpha.ctrl, w){

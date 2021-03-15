@@ -55,7 +55,7 @@ load_x_ca <- function(factor=NULL){
 }
 
 
-assemble_data <- function(rodents, loc.disc, caPr.disc){
+assemble_data <- function(rodents, caPr.disc){
   
   coords_all <- cbind(matrix(rodents$Lon_Add_Fix), rodents$Lat_Add_Fix)
   loc.disc <- caPr.disc[[1]]
@@ -90,10 +90,14 @@ assemble_data <- function(rodents, loc.disc, caPr.disc){
   
   # location data
   all_ids <- c(1:length(loc.disc[]))[!is.na(loc.disc[])]
+  loc_raster <- loc.disc
+  loc_raster[][!is.na(loc.disc[])] <- 0
+  loc_raster[][cells_obs] <- 1
   locs <- list(
     cells=cells_obs,
     status=1 * c(all_ids %in% cells_obs),  
-    coords=xyFromCell(loc.disc, cells_obs)
+    coords=xyFromCell(loc.disc, cells_obs),
+    raster=loc_raster
   )
   locs$ids <- c(1:length(all_ids))[as.logical(locs$status)]
   
@@ -231,105 +235,6 @@ calc_posterior_lodds <- function(output, x){
 }
 
 
-calc_posterior_risk <- function(output, x, null_alphas=F){
-  
-  n.samp <- nrow(output$samples.beta.ca)
-  n.cell <- ncol(output$samples.w)
-  risk_samp <- array(NA, c(n.samp, n.cell))
-  
-  for (i in 1:n.samp){
-    
-    beta_ca <- output$samples.beta.ca[i,]
-    beta_co <- output$samples.beta.co[i,]
-    alpha_ca <- output$samples.alpha.ca[i]
-    alpha_co <- output$samples.alpha.co[i]
-    w <- output$samples.w[i,]
-    
-    if (null_alphas){
-      alpha_ca <- 0
-      alpha_co <- 0
-    }
-    
-    lodds.i <- x %*% beta_ca + alpha_ca * w - x %*% beta_co - alpha_co * w
-    risk_samp[i,] <- t(calc_risk(lodds.i))
-    
-  }
-  
-  return(risk_samp)
-  
-}
-
-
-calc_posterior_risk_ds <- function(output, x, caPr, caPr.disc, null_alphas=F){
-  
-  n.samp <- nrow(output$samples.beta.ca)
-  
-  n.cell_ds <- length(caPr[[1]][][!is.na(caPr[[1]][])])
-  cell_ds <- c(1:ncell(caPr[[1]]))[!is.na(values(caPr[[1]]))]
-  
-  n.cell_lr <- length(caPr.disc[[1]][][!is.na(caPr.disc[[1]][])])
-  cells_lr <- c(1:ncell(caPr.disc[[1]]))[!is.na(values(caPr.disc[[1]]))]
-  
-  risk_samp <- array(NA, c(n.samp, n.cell_ds))
-  
-  for (i in 1:n.samp){
-    
-    beta_ca <- output$samples.beta.ca[i,]
-    beta_co <- output$samples.beta.co[i,]
-    alpha_ca <- output$samples.alpha.ca[i]
-    alpha_co <- output$samples.alpha.co[i]
-    w <- output$samples.w[i,]
-    
-    xy_ds <- xyFromCell(caPr[[1]], cell_ds)
-    mapped_lr <- cellFromXY(caPr.disc[[1]], xy_ds)
-    mapped_lr <- data.frame(cbind(cell_ds, mapped_lr))
-    names(mapped_lr) <- c('cell_ds', 'cells_lr')
-    
-    w2id <- data.frame(cbind(c(1:length(w)), cells_lr))
-    names(w2id) <- c('w_id', 'cells_lr')
-    wid2ds <- merge(w2id, mapped_lr, by='cells_lr')
-    wid2ds <- wid2ds[with(wid2ds, order(cell_ds)),]
-    w_ds <- w[wid2ds$w_id]
-    
-    if (null_alphas){
-      alpha_ca <- 0
-      alpha_co <- 0
-    }
-    
-    lodds.i <- x %*% beta_ca + alpha_ca * w_ds - x %*% beta_co - alpha_co * w_ds
-    risk_samp[i,] <- t(calc_risk(lodds.i))
-    
-  }
-  
-  return(risk_samp)
-  
-}
-
-
-calc_posterior_lodds <- function(output, x){
-  
-  n.samp <- nrow(output$samples.beta.ca)
-  n.cell <- ncol(output$samples.w)
-  lodds_samp <- array(NA, c(n.samp, n.cell))
-  
-  for (i in 1:n.samp){
-    
-    beta_ca <- output$samples.beta.ca[i,]
-    beta_co <- output$samples.beta.co[i,]
-    alpha_ca <- output$samples.alpha.ca[i]
-    alpha_co <- output$samples.alpha.co[i]
-    w <- output$samples.w[i,]
-    
-    lodds.i <- x %*% beta_ca + alpha_ca * w - x %*% beta_co - alpha_co * w
-    lodds_samp[i,] <- t(lodds.i)
-    
-  }
-  
-  return(lodds_samp)
-  
-}
-
-
 replace_vals <- function(df, column, val, replacement){
   for (i in 1:nrow(df)){
     if (df[i,column] == val){
@@ -368,50 +273,10 @@ load_prism_pcs <- function(){
 }
 
 
-
-#' summarize_param
-#'
-#' @param name parameter name
-#' @param true true parameter value
-#' @param estimated estimated parameter value
-#'
-#' @return list summarizing estimate and bias
-#' @export
-#'
-#' @examples
-summarize_param <- function(name, true, estimated){
-  
-  summ <- list()
-  summ$name <- name
-  summ$true <- true
-  summ$estimated <- round(estimated, 2)
-  summ$bias <- round(estimated - true, 2)
-  return(summ)
-  
-}
-
-
-#' overlay
-#'
-#' @param vals vector of ordered cell values
-#' @param r raster
-#'
-#' @return new raster with replaced values
-#' @export
-#'
-#' @examples
-overlay <- function(vals, r){
-  
-  r[][!is.na(r[])] <- vals
-  return(r)
-  
-}
-
-
 #' combine_w
 #' 
-#' combines estimated and kriged random effects 
-#' according to cell observation status 
+#' Combines estimated and kriged random effects 
+#' according to cell observation status.
 #' 
 #' @param w_est estimated random effects of observed sites
 #' @param w_krige kriged random effects
@@ -419,8 +284,6 @@ overlay <- function(vals, r){
 #'
 #' @return vector of combined estimated and kriged random effects
 #' @export
-#'
-#' @examples
 combine_w <- function(w_est, w_krige, status){
   
   w_comb <- c()
@@ -440,32 +303,6 @@ combine_w <- function(w_est, w_krige, status){
 }
 
 
-#' view_tr
-#'
-#' @param samples vector of mcmc samples 
-#' @param trueval optional true parameter value displayed as horizontal line
-#' @param title optional plot title
-#' @param ylim optional y axis limits
-#'
-#' @return
-#' @export
-#'
-#' @examples
-view_tr <- function(samples, trueval=NULL, title='', ylim=NULL){
-  
-  if (is.null(ylim)){
-    plot(samples, type='l', main=title)
-  } else {
-    plot(samples, type='l', main=title, ylim=ylim)
-  }
-  
-  if (!is.null(trueval)){
-    abline(h=trueval, col='2')
-  }
-  
-}
-
-
 #' view_tr_w
 #' 
 #' multipanel (4x4) view of random effect traceplots
@@ -474,10 +311,8 @@ view_tr <- function(samples, trueval=NULL, title='', ylim=NULL){
 #' @param w_true optional vector of true random effect values
 #' @param page view offset
 #'
-#' @return
+#' @return NULL. Creates plots.
 #' @export
-#'
-#' @examples
 view_tr_w <- function(samples, w_true=NULL, page=1){
   
   par(mfrow=c(4, 4))

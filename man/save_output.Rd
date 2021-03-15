@@ -14,6 +14,8 @@ save_output(
 \item{output}{(list) output of an MCMC function}
 
 \item{fname}{(character) file name}
+
+\item{dst}{(character) directory in which to save file}
 }
 \value{
 writes output as json file

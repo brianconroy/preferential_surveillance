@@ -10,7 +10,9 @@ load_output(
 )
 }
 \arguments{
-\item{file}{(character) name of output JSON file to be loaded}
+\item{fname}{(character) name of output JSON file to be loaded}
+
+\item{src}{(character) source directory of file}
 }
 \value{
 (list) loaded output
