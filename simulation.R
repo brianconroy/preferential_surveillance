@@ -2,7 +2,14 @@
 # Simulation study to
 # compare the proposed
 # model against benchmarks
-# (poisson and spatial poisson)
+# (spatial poisson regression,
+# poisson regression, and
+# BART classifiers) under
+# low and high levels of 
+# preferential sampling.
+
+# This script fits models to
+# the already simulated datasets.
 ###############################
 
 
@@ -13,7 +20,9 @@ library(mvtnorm)
 library(MASS)
 library(fields)
 library(R.utils)
-sourceDirectory('R/')
+library(dbarts)
+library(preferentialSurveillance)
+#sourceDirectory('R/')
 
 
 ###########################
@@ -26,7 +35,7 @@ n_sims <- 25
 agg_factor <- 10
 
 #### Prism Principal Components
-caPr <- load_prism_pcs()
+caPr <- prism_pca
 caPr.disc <- aggregate(caPr, fact=agg_factor)
 n_values(caPr.disc[[1]])
 plot(caPr.disc)
@@ -226,6 +235,118 @@ for (i in 1:n_sims){
   
 }
 
+
+####################################
+# Bayesian Additive Regression Trees
+# (Classifier)
+####################################
+
+# Probit BART classifiers are fit to the (transformed) simulated
+# datasets. We transform our simulated datasets of aggregated counts 
+# into datasets of binary positive-negative outcomes. Similarly to 
+# Carlson et al. (2021), we use the observed Y_i+ positive counts 
+# in a grid cell to generate a set of Y_i+ pseudo-positive points 
+# located at the centroid of the cell, and Y_i- counts of negative
+# specimen to generate a set of Y_i- pseudo-negative points in the 
+# same location
+
+for (i in 1:n_sims){
+  
+  print(paste("dataset", i))
+  data <- load_output(paste("data_low_", i, ".json", sep=""), src=src)
+  
+  #########
+  ### Cases
+  #########
+  X.ca <- data$case.data$x.standardised
+  Y.ca <- data$case.data$y
+  X.coords <- data$locs$coords
+  X.combined <- cbind(X.ca, X.coords)
+  
+  # Generate pseudo-positive points
+  Y.new <- c()
+  X.new.combined <- c()
+  for (idx in 1:length(Y.ca)){
+    
+    num_ca <- Y.ca[idx]
+    Y.new <- c(Y.new, rep(1, num_ca))
+    
+    # Repeat the covariates for the grid cell for each point
+    if (num_ca > 0){
+      for (iter in 1:num_ca){
+        X.new.combined <- rbind(X.new.combined, X.combined[idx,])
+      }
+    }
+  
+  }
+  
+  ############
+  ### Controls
+  ############
+  X.co <- data$ctrl.data$x.standardised
+  Y.co <- data$ctrl.data$y
+  
+  for (idx in 1:length(Y.co)){
+    
+    num_co <- Y.co[idx]
+    Y.new <- c(Y.new, rep(0, num_co))
+    
+    if (num_co > 0){
+      for (iter in 1:num_co){
+        X.new.combined <- rbind(X.new.combined, X.combined[idx,])
+      }
+    }
+    
+  }
+  
+  #######################
+  ### Fit Bart Classifier
+  #######################
+  
+  # By default a probit link function is used if Y has only values 0, 1
+  bart_clsf <- bart(X.new.combined, Y.new,
+                  # default prior hyperparams from the original BART paper
+                  k = 2.0,
+                  power = 2.0, 
+                  base = 0.95,
+                  # as suggested by BART authors
+                  ntree = 200,
+                  # number of posterior samples
+                  ndpost = 2000, 
+                  # burnin
+                  nskip = 500,
+                  printevery = 100, 
+                  # no thinning
+                  keepevery = 1, 
+                  keeptrainfits = TRUE,
+                  usequants = FALSE, 
+                  numcut = 100, 
+                  verbose = TRUE, 
+                  # 4 independent MCMC chains
+                  nchain = 4, 
+                  nthread = 1, 
+                  combinechains = TRUE,
+                  keeptrees = TRUE)
+  
+  # Load covariates for all cells in study region
+  X.full <- load_x_standard(as.logical(data$locs$status), agg_factor=agg_factor)
+  
+  # Combine with cordinates over the entire study region
+  r <- caPr.disc[[1]]
+  coords_all <- xyFromCell(caPr.disc[[1]], cell = (1:length(r[]))[!is.na(r[])])
+  X.full.comb <- cbind(X.full, coords_all)
+  
+  # Estimate posterior over full study region
+  posterior_risk <- predict(bart_clsf, X.full.comb)
+  post_mean_risk <- colMeans(posterior_risk)
+  
+  # Histogram of risk
+  hist(post_mean_risk, main = paste("Iteration", i))
+  
+  ## Save data ------------------------------------------------
+  save_output(post_mean_risk, paste("output.bart_clsf_", sim_name, "_", i, ".json", sep=""), dst=src)
+
+}
 
 ############################
 # High preferential sampling
@@ -434,5 +555,112 @@ for (i in 1:n_sims){
   output.sp_co$description <- paste(sim_name, "_", i, sep="")
   save_output(output.sp_co, paste("output.sp_co_", sim_name, "_", i, ".json", sep=""), dst=src)
   save_output(kriged_w_co, paste("output.krige_co_", sim_name, "_", i, ".json", sep=""), dst=src)
+  
+}
+
+####################################
+# Bayesian Additive Regression Trees
+# (Classifier, High PS Level)
+####################################
+
+# Probit BART classifiers are fit to the simulated datasets
+# after transformation in the same manner as described in 
+# the "low" preferential sampling simulations.
+
+for (i in 1:n_sims){
+  
+  print(paste("dataset", i))
+  data <- load_output(paste("data_high_", i, ".json", sep=""), src=src)
+  
+  #########
+  ### Cases
+  #########
+  X.ca <- data$case.data$x.standardised
+  Y.ca <- data$case.data$y
+  X.coords <- data$locs$coords
+  X.combined <- cbind(X.ca, X.coords)
+  
+  # Generate pseudo-positive points
+  Y.new <- c()
+  X.new.combined <- c()
+  for (idx in 1:length(Y.ca)){
+    
+    num_ca <- Y.ca[idx]
+    Y.new <- c(Y.new, rep(1, num_ca))
+    
+    # Repeat the covariates for the grid cell for each point
+    if (num_ca > 0){
+      for (iter in 1:num_ca){
+        X.new.combined <- rbind(X.new.combined, X.combined[idx,])
+      }
+    }
+    
+  }
+  
+  ############
+  ### Controls
+  ############
+  X.co <- data$ctrl.data$x.standardised
+  Y.co <- data$ctrl.data$y
+  
+  for (idx in 1:length(Y.co)){
+    
+    num_co <- Y.co[idx]
+    Y.new <- c(Y.new, rep(0, num_co))
+    
+    if (num_co > 0){
+      for (iter in 1:num_co){
+        X.new.combined <- rbind(X.new.combined, X.combined[idx,])
+      }
+    }
+    
+  }
+  
+  #######################
+  ### Fit Bart Classifier
+  #######################
+  
+  # By default a probit link function is used if Y has only values 0, 1
+  bart_clsf <- bart(X.new.combined, Y.new,
+                    # default prior hyperparams from the original BART paper
+                    k = 2.0,
+                    power = 2.0, 
+                    base = 0.95,
+                    # as suggested by BART authors
+                    ntree = 200,
+                    # number of posterior samples
+                    ndpost = 2000, 
+                    # burnin
+                    nskip = 500,
+                    printevery = 100, 
+                    # no thinning
+                    keepevery = 1, 
+                    keeptrainfits = TRUE,
+                    usequants = FALSE, 
+                    numcut = 100, 
+                    verbose = TRUE, 
+                    # 4 independent MCMC chains
+                    nchain = 4, 
+                    nthread = 1, 
+                    combinechains = TRUE,
+                    keeptrees = TRUE)
+  
+  # Load covariates for all cells in study region
+  X.full <- load_x_standard(as.logical(data$locs$status), agg_factor=agg_factor)
+  
+  # Combine with cordinates over the entire study region
+  r <- caPr.disc[[1]]
+  coords_all <- xyFromCell(caPr.disc[[1]], cell = (1:length(r[]))[!is.na(r[])])
+  X.full.comb <- cbind(X.full, coords_all)
+  
+  # Estimate posterior over full study region
+  posterior_risk <- predict(bart_clsf, X.full.comb)
+  post_mean_risk <- colMeans(posterior_risk)
+  
+  # Histogram of risk
+  hist(post_mean_risk, main = paste("Iteration", i))
+  
+  ## Save data ------------------------------------------------
+  save_output(post_mean_risk, paste("output.bart_clsf_", sim_name, "_", i, ".json", sep=""), dst=src)
   
 }
