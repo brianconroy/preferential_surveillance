@@ -430,7 +430,7 @@ save_output(kriged_w_co, "output_cdph_baseline_krige_co.json")
 #             Fit BART Classification Model                   #
 ###############################################################
 
-# A orobit BART classifier is fit to the (transformed) surveillance
+# A probit BART classifier is fit to the (transformed) surveillance
 # datasets. We transform our surveillance dataset of aggregated counts 
 # into one of binary positive-negative outcomes. Similarly to 
 # Carlson et al. (2021), we use the observed Y_i+ positive counts 
