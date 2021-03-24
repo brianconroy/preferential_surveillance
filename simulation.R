@@ -25,9 +25,16 @@ library(preferentialSurveillance)
 #sourceDirectory('R/')
 
 
-###########################
-# Low preferential sampling
-###########################
+#############################################################################
+#                       Low Preferential Sampling                           #
+#############################################################################
+
+# The first set of simulations is run under a "low" level of preferential
+# sampling, i.e. a generally weaker association between the location of 
+# sample sites and underlying disease risk.
+
+# Setup ---------------------------------------------------------------------
+
 sampling <- "low"
 src <- "/Users/brianconroy/Documents/research/dataInt/output/sim_iteration/"
 sim_name <- paste("sim_iteration_v2_", sampling, sep="")
@@ -43,38 +50,61 @@ cells.all <- c(1:ncell(caPr.disc))[!is.na(values(caPr.disc[[1]]))]
 coords <- xyFromCell(caPr.disc, cell=cells.all)
 d <- as.matrix(dist(coords, diag=TRUE, upper=TRUE))
 
+###################################################
+#                Proposed Method                  #
+###################################################
+
 for (i in 1:n_sims){
   
   print(paste("dataset", i))
   data <- load_output(paste("data_low_", i, ".json", sep=""), src=src)
   
-  ## Initial Values
-  # Random effects, beta.samp, theta, phi
+  # Estimate initial values for spatial params ------------------------------
   params <- load_output(paste("params_low_", i, ".json", sep=""), src=src)
+  
+  # Specify priors for fitting initial values. 
+  # These priors are NOT used when fitting 
+  # the full model.
   Theta <- params$Theta
   Phi <- params$Phi
   prior_theta <- get_gamma_prior(Theta, 5)
   prior_phi <- get_igamma_prior(Phi, 5)
-  w_output <- logisticGp(y=data$locs$status, x=data$locs$x.scaled, d, n.sample=1500, burnin=500, L_beta=8, L_w=8, proposal.sd.theta=0.3,
-                            w_initial=NULL, theta_initial=NULL, phi_initial=NULL, beta_initial=NULL,
-                            prior_phi=prior_phi, prior_theta=prior_theta)
   
+  # Estimate an initial value for the vector
+  # of spatial random effects (W). Do so by
+  # regressing binary indicators for whether
+  # a grid cell was observed on prism covariates
+  # plus realizations from a Gaussian process (W)
+  w_output <- logisticGp(
+                         # binary indicators, covariates, distance matrix
+                         y=data$locs$status, x=data$locs$x.scaled, d,
+                         
+                         # MCMC sampling params
+                         n.sample=1500, burnin=500, L_beta=8, L_w=8, proposal.sd.theta=0.3,
+                         
+                         # Initial values
+                         w_initial=NULL, theta_initial=NULL, phi_initial=NULL, beta_initial=NULL,
+                         
+                         # Prior parametrizations
+                         prior_phi=prior_phi, prior_theta=prior_theta)
+  
+  # Specify initial MCMC values
   w_initial <- colMeans(w_output$samples.w)
   theta_initial <- mean(w_output$samples.theta)
   phi_initial <- mean(w_output$samples.phi)
   beta_loc_initial <- colMeans(w_output$samples.beta)
   
-  # Beta & alpha (case) initial values
+  # Estimate beta+ and alpha+ initial values ------------------------------
   ini_case <- glm(data$case.data$y ~ data$case.data$x.standardised + w_initial[data$locs$ids] - 1, family='poisson')
   alpha_ca_initial <- coefficients(ini_case)[4]
   beta_ca_initial <- coefficients(ini_case)[1:3]
   
-  # Beta & alpha (control) initial values
+  # Estimate beta- and alpha- initial values ------------------------------
   ini_ctrl <- glm(data$ctrl.data$y ~ data$ctrl.data$x.standardised + w_initial[data$locs$ids] - 1, family='poisson')
   alpha_co_initial <- coefficients(ini_ctrl)[4]
   beta_co_initial <- coefficients(ini_ctrl)[1:3]
   
-  # Fit full model
+  # Specify priors --------------------------------------------------------
   prior_alpha_ca_mean <- alpha_ca_initial
   prior_alpha_ca_var <- 3
   prior_alpha_co_mean <- alpha_co_initial
@@ -82,6 +112,7 @@ for (i in 1:n_sims){
   prior_theta <- get_gamma_prior(theta_initial, 2)
   prior_phi <- get_igamma_prior(phi_initial, 2)
   
+  # MCMC params ------------------------------------------------------------
   n.sample <- 10000
   burnin <- 3000
   proposal.sd.theta <- 0.15
@@ -109,17 +140,34 @@ for (i in 1:n_sims){
   target_loc=0.65
   
   # Run fit
-  output <- preferentialSampling(data, d, n.sample, burnin,
-                           L_w, L_ca, L_co, L_a_ca, L_a_co,
-                           proposal.sd.theta=proposal.sd.theta,
-                           m_aca=m_aca, m_aco=m_aco, m_ca=m_ca, m_co=m_co, m_w=m_w, 
-                           target_aca=target_aca, target_aco=target_aco, target_ca=target_ca, target_co=target_co, target_w=target_w, target_loc=target_loc,
-                           self_tune_w=TRUE, self_tune_aca=TRUE, self_tune_aco=TRUE, self_tune_ca=TRUE, self_tune_co=TRUE, self_tune_loc=TRUE,
-                           beta_ca_initial=beta_ca_initial, beta_co_initial=beta_co_initial, alpha_ca_initial=alpha_ca_initial, alpha_co_initial=alpha_co_initial, beta_loc_initial=beta_loc_initial,
-                           theta_initial=theta_initial, phi_initial=phi_initial, w_initial=w_initial,
-                           prior_phi=prior_phi, prior_theta=prior_theta, prior_alpha_ca_var=prior_alpha_ca_var, prior_alpha_co_var=prior_alpha_co_var)
+  output <- preferentialSampling(
+                                # data, distance matrix
+                                data, d, 
+                                
+                                # MCMC params
+                                n.sample, burnin,
+                                L_w, L_ca, L_co, L_a_ca, L_a_co,
+                                proposal.sd.theta=proposal.sd.theta,
+                           
+                                # HMC self tuning params
+                                m_aca=m_aca, m_aco=m_aco, m_ca=m_ca, m_co=m_co, m_w=m_w, 
+                                target_aca=target_aca, target_aco=target_aco, target_ca=target_ca, 
+                                target_co=target_co, target_w=target_w, target_loc=target_loc,
+                                self_tune_w=TRUE, self_tune_aca=TRUE, self_tune_aco=TRUE, self_tune_ca=TRUE, 
+                                self_tune_co=TRUE, self_tune_loc=TRUE,
+                                
+                                # Initial MCMC values
+                                beta_ca_initial=beta_ca_initial, beta_co_initial=beta_co_initial, 
+                                alpha_ca_initial=alpha_ca_initial, alpha_co_initial=alpha_co_initial, 
+                                beta_loc_initial=beta_loc_initial, theta_initial=theta_initial, 
+                                phi_initial=phi_initial, w_initial=w_initial,
+                                
+                                # Priors
+                                prior_phi=prior_phi, prior_theta=prior_theta, prior_alpha_ca_var=prior_alpha_ca_var, 
+                                prior_alpha_co_var=prior_alpha_co_var
+                                )
   
-  # Check estimated log odds
+  # Check estimated log odds -------------------------------------------------
   w.hat <- colMeans(output$samples.w)
   beta_ca_h <- colMeans(output$samples.beta.ca)
   beta_co_h <- colMeans(output$samples.beta.co)
@@ -128,27 +176,29 @@ for (i in 1:n_sims){
   phi_h <- mean(output$samples.phi)
   theta_h <- mean(output$samples.theta)
   
+  # True param values
   Alpha.case <- params$alpha.case
   Alpha.ctrl <- params$alpha.ctrl
   beta.case <- params$beta.case
   beta.ctrl <- params$beta.ctrl
   W <- params$W
   
+  # True log odds vs estimated
   X.standard <- load_x_standard(as.logical(data$locs$status), agg_factor=agg_factor)
   lodds.true <- X.standard %*% beta.case + Alpha.case * W - X.standard %*% beta.ctrl - Alpha.ctrl * W
   lodds.ps <- X.standard %*% beta_ca_h + alpha_ca_h * w.hat - X.standard %*% beta_co_h - alpha_co_h * w.hat
   plot(x=lodds.true, y=lodds.ps, main='A)', xlab='True Log Odds', ylab='Estimated Log Odds'); abline(0, 1, col='2')
   
-  # Save output
+  # Save output --------------------------------------------------------------
   output$description <- paste(sim_name, "_", i, sep="")
   save_output(output, paste("output_", sim_name, "_", i, ".json", sep=""), dst=src)
   
 }
 
 
-###############################
-#### Spatial poisson regression
-###############################
+###################################################
+#           Spatial Poisson Regression            #
+###################################################
 
 for (i in 1:n_sims){
   
@@ -236,10 +286,10 @@ for (i in 1:n_sims){
 }
 
 
-####################################
-# Bayesian Additive Regression Trees
-# (Classifier)
-####################################
+######################################
+# Bayesian Additive Regression Trees #
+# (Classifier)                       #
+######################################
 
 # Probit BART classifiers are fit to the (transformed) simulated
 # datasets. We transform our simulated datasets of aggregated counts 
@@ -348,9 +398,10 @@ for (i in 1:n_sims){
 
 }
 
-############################
-# High preferential sampling
-############################
+#############################################################################
+#                       High Preferential Sampling                          #
+#############################################################################
+
 sampling <- "high"
 src <- "/Users/brianconroy/Documents/research/dataInt/output/sim_iteration/"
 sim_name <- paste("sim_iteration_v2_", sampling, sep="")
