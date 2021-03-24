@@ -1,14 +1,17 @@
-###################
-# Simulate datasets
-###################
+###############################
+# Simulation study to
+# compare the proposed
+# model against benchmarks
+# (spatial poisson regression,
+# poisson regression, and
+# BART classifiers) under
+# low and high levels of 
+# preferential sampling.
 
-# library(fields)
-# library(MASS)
-# library(mvtnorm)
-# library(plyr)
-# library(R.utils)
-# library(raster)
-# library(sp)
+# This script simulated datasets
+# under low and high levels of
+# preferential sampling.
+###############################
 
 R.utils::sourceDirectory('R/')
 
