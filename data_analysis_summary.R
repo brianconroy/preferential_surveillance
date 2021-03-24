@@ -292,9 +292,9 @@ for (t in c(0.01, 0.02, 0.025, 0.03, 0.033, 0.064)){
 # Endemic Region Overlay --------------------------------------
 
 # Overlay points of observed cases/controls onto the
-# plage "endemic" region, i.e. where the proposedd model
+# plage "endemic" region, i.e. where the proposed model
 # predicts risk to be above a reasonable threshold (taken
-# here to be  0.33). 
+# here to be  0.033). 
 
 # NOTE: This section will only run if you
 # have access to the raw surveillance data.
