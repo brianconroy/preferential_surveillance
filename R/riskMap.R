@@ -1,27 +1,26 @@
 
-
 # generate posterior risk samples at high resolution
-calc_posterior_risk <- function(output, x, w_ds){
-  
+calc_posterior_risk_ds <- function(output, x, w_ds){
+
   n.samp <- nrow(output$samples.beta.ca)
   n.cell <- ncol(w_ds)
   risk_samp <- array(NA, c(n.samp, n.cell))
-  
+
   for (i in 1:n.samp){
-    
+
     beta_ca <- output$samples.beta.ca[i,]
     beta_co <- output$samples.beta.co[i,]
     alpha_ca <- output$samples.alpha.ca[i]
     alpha_co <- output$samples.alpha.co[i]
     w <- w_ds[i]
-    
+
     lodds.i <- x %*% beta_ca + alpha_ca * w - x %*% beta_co - alpha_co * w
     risk_samp[i,] <- t(calc_risk(lodds.i))
-    
+
   }
-  
+
   return(risk_samp)
-  
+
 }
 
 

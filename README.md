@@ -4,9 +4,9 @@
 This repository contains code to estimate disease risk surfaces
 from preferentially sampled disease surveillance data. It includes simulation studies
 comparing performance of the proposed method against various benchmarks
-(Bayesian Additive Regression Trees, Spatial Poisson Regression, Poisson Regression)
-in estimating disease risk from preferentially sampled data. Also included is an analysis 
-of real surveillance data monitoring plague (Yersinia pestis) within the sciurid population of California. 
+(Bayesian Additive Regression Trees, spatial Poisson regression, Poisson regression). 
+Also included is an analysis of real surveillance data monitoring plague (*Yersinia pestis*) 
+within the rodent population of California. 
 
 # Organization
 
@@ -21,7 +21,7 @@ Simulation scripts are organized as follows:
 levels of preferential sampling.
 * **simulation.R**: Fits the proposed preferential sampling method along with benchmarks to the 
 datasets simulated by simulation_data.R. 
-* **simulation_analysis.R**: Compares performance of the models fit by **simulation.R**.
+* **simulation_analysis.R**: Compares performance of the models fit by simulation.R.
 
 Plague analysis scripts are structured as:
 

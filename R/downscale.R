@@ -49,3 +49,18 @@ interpolate_w <- function(samples, bws, r_train, r_pred, out_file=NULL){
   return(samples_pred)
   
 }
+
+downscale_tps <- function(w.est, caPr.disc, caPr){
+  
+  rw <- caPr.disc[[1]]
+  rw[][!is.na(rw[])] <- w.est
+  xy <- data.frame(xyFromCell(rw, 1:ncell(rw)))
+  v <- getValues(rw)
+  tps <- Tps(xy, v)
+  p <- raster(caPr[[2]])
+  p <- interpolate(p, tps)
+  p <- mask(p, caPr[[1]])
+  w.hat_ds <- p[][!is.na(p[])]
+  return(list(p=p, w.hat_ds=w.hat_ds))
+  
+}
