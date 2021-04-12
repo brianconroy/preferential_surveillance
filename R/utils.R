@@ -93,11 +93,21 @@ assemble_data <- function(rodents, caPr.disc){
   loc_raster <- loc.disc
   loc_raster[][!is.na(loc.disc[])] <- 0
   loc_raster[][cells_obs] <- 1
+  
+  # location covariates
+  cov.disc <- caPr.disc
+  x1 <- cov.disc[[1]][][all_ids]
+  x2 <- cov.disc[[2]][][all_ids]
+  x1.standardised <- (x1 - mean(x1))/sd(x1)
+  x2.standardised <- (x2 - mean(x2))/sd(x2)
+  x <- cbind(1, x1, x2)
+  x.standardised <- cbind(1, x1.standardised, x2.standardised)
   locs <- list(
     cells=cells_obs,
     status=1 * c(all_ids %in% cells_obs),  
     coords=xyFromCell(loc.disc, cells_obs),
-    raster=loc_raster
+    raster=loc_raster,
+    x.scaled=x.standardised
   )
   locs$ids <- c(1:length(all_ids))[as.logical(locs$status)]
   

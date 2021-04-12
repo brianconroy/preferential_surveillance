@@ -17,17 +17,7 @@
 # (3) Probit (BART) classification model
 # (4) Poisson regression models
 
-library(raster)
-library(plyr)
-library(grid)
-library(mvtnorm)
-library(ggplot2)
-library(R.utils)
-library(gridExtra)
-library(jsonlite)
-library(fields)
 library(preferentialSurveillance)
-sourceDirectory('R/')
 
 ## Global Variables -------------------------------------------
 

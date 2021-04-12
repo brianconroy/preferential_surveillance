@@ -39,11 +39,24 @@ Remaining files are organized as in any other package:
 
 # Installation
 
+**Assumptions**:
+
+* R version 3.4.3 - 4.0.5 has been installed.
+* The devtools package has been installed.
+
+```{r}
+install.packages("devtools")
+```
+
 Dependencies of the repository and proccessed datasets can be installed and made accessible by
 first cloning the repository, navigating to the root of the repository in the R console, and 
 installing the repository locally via:
 
 ```{r}
+# install package dependencies
+devtools::install_deps()
+
+# install package
 devtools::install()
 ```
 

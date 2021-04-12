@@ -5,20 +5,14 @@
 # (spatial poisson regression,
 # poisson regression, and
 # BART classifiers) under
-# low and high levels of 
+# low, high and zero levels of 
 # preferential sampling.
 
 # This script evaluates the models
 # already fit by simulation.R
 ###############################
 
-library(plyr)
-library(ggplot2)
-library(gridExtra)
-library(jsonlite)
 library(preferentialSurveillance)
-sourceDirectory('R/')
-
 
 src <- "/Users/brianconroy/Documents/research/dataInt/output/sim_iteration/"
 agg_factor <- 10
@@ -290,37 +284,182 @@ plot(x=n_cells_obs_high, y=rmse_ps_high,
 
 
 ########################################################################
+#           Simulation Results: No Preferential Sampling             #
+########################################################################
+
+
+sampling <- "none"
+src <- "/Users/brianconroy/Documents/research/dataInt/output/sim_iteration/"
+sim_name <- paste("sim_iteration_v2_", sampling, sep="")
+
+# Define structures to hold metrics
+bias_beta_ca_none <- array(NA, c(n_sims, 3))
+bias_beta_co_none <- array(NA, c(n_sims, 3))
+est_alpha_ca_none <- c()
+est_alpha_co_none <- c()
+rmse_ps_none <- c()
+rmse_pr_none <- c()
+rmse_sp_none <- c()
+rmse_bart_none <- c()
+mbias_ps_none <- c()
+mbias_pr_none <- c()
+mbias_sp_none <- c()
+mbias_bart_none <- c()
+n_cells_obs_none <- c()
+prevalences_none <- c()
+
+## Calculate metrics over each simulated dataset -----------------------
+for (i in 1:n_sims){
+  print(i)
+  
+  # True parameter values for the iteration
+  data <- load_output(paste("data_none_", i, ".json", sep=""), src=src)
+  params <- load_output(paste("params_none_", i, ".json", sep=""), src=src)
+  Theta <- params$Theta
+  Phi <- params$Phi
+  Alpha.case <- params$alpha.case
+  Alpha.ctrl <- params$alpha.ctrl
+  beta.case <- params$beta.case
+  beta.ctrl <- params$beta.ctrl
+  W <- params$W
+  
+  # Preferential sampling model ------------------------------------------
+  
+  # Load model output
+  output <- load_output(paste("output_", sim_name, "_", i, ".json", sep=""), src=src)
+  
+  # Calculate posterior means
+  w.hat <- colMeans(output$samples.w)
+  beta_ca_h <- colMeans(output$samples.beta.ca)
+  beta_co_h <- colMeans(output$samples.beta.co)
+  alpha_ca_h <- mean(output$samples.alpha.ca)
+  alpha_co_h <- mean(output$samples.alpha.co)
+  phi_h <- mean(output$samples.phi)
+  theta_h <- mean(output$samples.theta)
+  
+  # Biases
+  bias_beta_ca_none[i,] <- beta_ca_h - params$beta.case
+  bias_beta_co_none[i,] <- beta_co_h - params$beta.ctrl
+  est_alpha_ca_none <- c(est_alpha_ca_none, alpha_ca_h)
+  est_alpha_co_none <- c(est_alpha_co_none, alpha_co_h)
+  
+  # RMSE in log disease odds over all grid cells in the study region
+  X.standard <- load_x_standard(as.logical(data$locs$status), agg_factor=agg_factor)
+  lodds.true <- X.standard %*% beta.case + Alpha.case * W - X.standard %*% beta.ctrl - Alpha.ctrl * W
+  lodds.ps <- X.standard %*% beta_ca_h + alpha_ca_h * w.hat - X.standard %*% beta_co_h - alpha_co_h * w.hat
+  plot(x=lodds.true, y=lodds.ps, main='A)', xlab='True Log Odds', ylab='Estimated Log Odds'); abline(0, 1, col='2')
+  rmse_ps_none <- c(rmse_ps_none, sqrt(mean((lodds.true-lodds.ps)^2)))
+  mbias_ps_none <- c(mbias_ps_none, mean(lodds.ps-lodds.true))
+  
+  # Reference model (Poisson Regression) ---------------------------------
+  X.ca <- data$case.data$x.standardised
+  Y.ca <- data$case.data$y
+  X.co <- data$ctrl.data$x.standardised
+  Y.co <- data$ctrl.data$y
+  # Cases
+  rmodel.ca <- glm(Y.ca ~ X.ca-1, family='poisson')
+  beta_ca_r <- coefficients(rmodel.ca)
+  # Controls
+  rmodel.co <- glm(Y.co ~ X.co-1, family='poisson')
+  beta_co_r <- coefficients(rmodel.co)
+  # Log odds
+  lodds.r <- X.standard %*% beta_ca_r - X.standard %*% beta_co_r
+  plot(x=lodds.true, y=lodds.r, main='reference', xlab='True Log Odds', ylab='Estimated Log Odds'); abline(0, 1, col='2')
+  rmse_pr_none <- c(rmse_pr_none, sqrt(mean((lodds.true-lodds.r)^2)))
+  mbias_pr_none <- c(mbias_pr_none, mean(lodds.r-lodds.true))
+  
+  # Reference model (Spatial Poisson Regression) -------------------------
+  output_sp_ca <- load_output(paste("output.sp_ca_", sim_name, "_", i, ".json", sep=""), src=src)
+  output_sp_co <- load_output(paste("output.sp_co_", sim_name, "_", i,  ".json", sep=""), src=src)
+  kriged_w_ca <- load_output(paste("output.krige_ca_", sim_name, "_", i, ".json", sep=""), src=src)
+  kriged_w_co <- load_output(paste("output.krige_co_", sim_name, "_", i, ".json", sep=""), src=src)
+  w.hat_spca <- colMeans(output_sp_ca$samples.w)
+  w.hat_spco <- colMeans(output_sp_co$samples.w)
+  w_ca_est <- combine_w(w.hat_spca, kriged_w_ca$mu.new, as.logical(data$locs$status))
+  w_co_est <- combine_w(w.hat_spco, kriged_w_co$mu.new, as.logical(data$locs$status))
+  beta_co_sp <- colMeans(output_sp_co$samples.beta)
+  beta_ca_sp <- colMeans(output_sp_ca$samples.beta)
+  lodds_sp <- X.standard %*% beta_ca_sp + w_ca_est - X.standard %*% beta_co_sp - w_co_est
+  rmse_sp_none <- c(rmse_sp_none, sqrt(mean((lodds.true-lodds_sp)^2)))
+  plot(x=lodds.true, y=lodds_sp, main='reference 2', xlab='True Log Odds', ylab='Estimated Log Odds'); abline(0, 1, col='2')
+  mbias_sp_none <- c(mbias_sp_none, mean(lodds_sp-lodds.true))
+
+  n_cells_obs_none <- c(n_cells_obs_none, sum(data$locs$status))
+  prevalences_none <- c(prevalences_none, sum(data$case.data$y)/(sum(data$case.data$y + data$ctrl.data$y)))
+
+  # Probit BART Classification model -------------------------------------
+
+  # The BART output is a vector of estimated posterior mean risk values
+  # for each grid cell in the study region
+  pred_risk_bart <- load_output(paste("output.bart_clsf_", sim_name, "_", i, ".json", sep=""), src=src)
+
+  # Transform posterior mean risk values to obtain the log disease oddds:
+  # log[r / (1 - r)] = log odds
+  lodds.bart <- log(pred_risk_bart/(1-pred_risk_bart))
+  plot(x=lodds.true, y=lodds.bart, main=paste('BART simulation:', i),
+       xlab='True Log Odds', ylab='Estimated Log Odds'); abline(0, 1, col='2')
+
+  # BART RMSE
+  rmse_bart_none <- c(rmse_bart_none, sqrt(mean((lodds.true-lodds.bart)^2)))
+  mbias_bart_none <- c(mbias_bart_none, mean(lodds.true-lodds.bart))
+  
+}
+
+# Initial summary of RMSE in log disease odds across the 4 models
+boxplot(cbind(rmse_ps_none, rmse_sp_none, rmse_pr_none, rmse_bart_none), col=rainbow(3, s=0.5))
+
+# Histograms of estimates for alpha+ and alpha- (should be mean zero)
+par(mfrow=c(1,2))
+hist(est_alpha_ca_none, main='Alpha(+)', xlab='Posterior Mean'); abline(v=0, col=2)
+hist(est_alpha_co_none, main='Alpha(-)', xlab='Posterior Mean'); abline(v=0, col=2)
+
+# Check relationship between RMSE of the proposed model and the 
+# number of observed cells in each dataset
+plot(x=n_cells_obs_none, y=rmse_ps_none, 
+     xlab="Number of Observed Grid Cells", ylab="RMSE (Pref Sampling Model)")
+
+
+########################################################################
 #                     Figure: RMSE Boxplots                            #
 ########################################################################
 
 ## All datasets --------------------------------------------------------
 
 # High preferential sampling
-df2 <- data.frame(cbind(c(rmse_ps_high, rmse_sp_high, rmse_pr_high, rmse_bart_high)))
+df2 <- data.frame(cbind(c(rmse_ps_high, rmse_sp_high, rmse_pr_high)))#, rmse_bart_high)))
 names(df2) <- "RMSE"
 df2$Model <- c(rep("Pref-S", length(rmse_ps_high)), 
                rep("Spat-P", length(rmse_ps_high)),
-               rep("Pois-R", length(rmse_pr_high)),
-               rep("BART", length(rmse_bart_high)))
-df2$Sampling <- rep("High", 4*length(rmse_ps_high))
+               rep("Pois-R", length(rmse_pr_high)))#,
+               #rep("BART", length(rmse_bart_high)))
+df2$Sampling <- rep("High", 3*length(rmse_ps_high))
 
 # Low preferential sampling
-df1 <- data.frame(cbind(c(rmse_ps_low, rmse_sp_low, rmse_pr_low, rmse_bart_low)))
+df1 <- data.frame(cbind(c(rmse_ps_low, rmse_sp_low, rmse_pr_low)))#, rmse_bart_low)))
 names(df1) <- "RMSE"
 df1$Model <- c(rep("Pref-S", length(rmse_ps_low)), 
                rep("Spat-P", length(rmse_ps_low)),
-               rep("Pois-R", length(rmse_ps_low)),
-               rep("BART", length(rmse_ps_low)))
-df1$Sampling <- rep("Low", 4*length(rmse_ps_low))
+               rep("Pois-R", length(rmse_ps_low)))#,
+               #rep("BART", length(rmse_ps_low)))
+df1$Sampling <- rep("Low", 3*length(rmse_ps_low))
+
+# No preferential sampling
+df0 <- data.frame(cbind(c(rmse_ps_none, rmse_sp_none, rmse_pr_none)))#, rmse_bart_none)))
+names(df0) <- "RMSE"
+df0$Model <- c(rep("Pref-S", length(rmse_ps_none)), 
+               rep("Spat-P", length(rmse_ps_none)),
+               rep("Pois-R", length(rmse_ps_none)))#,
+               #rep("BART", length(rmse_ps_none)))
+df0$Sampling <- rep("Zero", 3*length(rmse_ps_none))
 
 # Combined
-df <- rbind(df1, df2)
-df$Model <- factor(df$Model,levels=c("Pref-S", "Spat-P", "Pois-R", "BART"))
+df <- rbind(df0, df1, df2)
+df$Model <- factor(df$Model,levels=c("Pref-S", "Spat-P", "Pois-R"))#, "BART"))
 
 # Plot
 p1 <- ggplot() + 
   geom_boxplot(data = df, mapping = aes(Sampling, RMSE, fill=Model)) + 
-  scale_x_discrete(limits=c("Low", "High")) + 
+  scale_x_discrete(limits=c("Zero", "Low", "High")) + 
   theme_bw() + 
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) + 
@@ -331,33 +470,52 @@ p1 <- ggplot() +
 
 high_geq75 <- n_cells_obs_high >= 75
 low_geq75 <- n_cells_obs_low >= 75
+none_geq75 <- n_cells_obs_none >= 75
 
 # High preferential sampling
-df2_75 <- data.frame(cbind(c(rmse_ps_high[high_geq75], rmse_sp_high[high_geq75], rmse_pr_high[high_geq75], rmse_bart_high[high_geq75])))
+df2_75 <- data.frame(cbind(c(rmse_ps_high[high_geq75], 
+                             rmse_sp_high[high_geq75], 
+                             rmse_pr_high[high_geq75])))#, 
+                             #rmse_bart_high[high_geq75])))
 names(df2_75) <- "RMSE"
 df2_75$Model <- c(rep("Pref-S", sum(high_geq75)), 
                   rep("Spat-P", sum(high_geq75)),
-                  rep("Pois-R", sum(high_geq75)),
-                  rep("BART", sum(high_geq75)))
-df2_75$Sampling <- rep("High", 4*sum(high_geq75))
+                  rep("Pois-R", sum(high_geq75)))#,
+                  #rep("BART", sum(high_geq75)))
+df2_75$Sampling <- rep("High", 3*sum(high_geq75))
 
 # Low preferential sampling
-df1_75 <- data.frame(cbind(c(rmse_ps_low[low_geq75], rmse_sp_low[low_geq75], rmse_pr_low[low_geq75], rmse_bart_low[low_geq75])))
+df1_75 <- data.frame(cbind(c(rmse_ps_low[low_geq75], 
+                             rmse_sp_low[low_geq75], 
+                             rmse_pr_low[low_geq75])))#, 
+                             #rmse_bart_low[low_geq75])))
 names(df1_75) <- "RMSE"
 df1_75$Model <- c(rep("Pref-S", sum(low_geq75)), 
                   rep("Spat-P", sum(low_geq75)),
-                  rep("Pois-R", sum(low_geq75)),
-                  rep("BART", sum(low_geq75)))
-df1_75$Sampling <- rep("Low", 4*sum(low_geq75))
+                  rep("Pois-R", sum(low_geq75)))#,
+                  #rep("BART", sum(low_geq75)))
+df1_75$Sampling <- rep("Low",3*sum(low_geq75))
+
+# No preferential sampling
+df0_75 <- data.frame(cbind(c(rmse_ps_none[none_geq75], 
+                             rmse_sp_none[none_geq75], 
+                             rmse_pr_none[none_geq75])))#, 
+                             #rmse_bart_none[none_geq75])))
+names(df0_75) <- "RMSE"
+df0_75$Model <- c(rep("Pref-S", sum(none_geq75)), 
+                  rep("Spat-P", sum(none_geq75)),
+                  rep("Pois-R", sum(none_geq75)))#,
+                  #rep("BART", sum(none_geq75)))
+df0_75$Sampling <- rep("Zero", 3*sum(none_geq75))
 
 # Combined
-df_75 <- rbind(df1_75, df2_75)
-df_75$Model <- factor(df_75$Model,levels=c("Pref-S", "Spat-P", "Pois-R", "BART"))
+df_75 <- rbind(df0_75, df1_75, df2_75)
+df_75$Model <- factor(df_75$Model,levels=c("Pref-S", "Spat-P", "Pois-R"))#, "BART"))
 
 # Plot
 p2 <- ggplot() + 
   geom_boxplot(data = df_75, mapping = aes(Sampling, RMSE, fill=Model)) + 
-  scale_x_discrete(limits=c("Low", "High")) + 
+  scale_x_discrete(limits=c("Zero", "Low", "High")) + 
   theme_bw() + 
   theme(panel.border = element_blank(), panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) +
@@ -372,6 +530,10 @@ grid.arrange(p1, p2, ncol=2)
 ########################################################################
 
 # Observed cells
+df0 <- data.frame(cbind(n_cells_obs_none, rmse_ps_none))
+names(df0) <- c("N", "RMSE")
+df0$Sampling <- "Zero"
+
 df1 <- data.frame(cbind(n_cells_obs_high, rmse_ps_high))
 names(df1) <- c("N", "RMSE")
 df1$Sampling <- "High"
@@ -380,7 +542,7 @@ df2 <- data.frame(cbind(n_cells_obs_low, rmse_ps_low))
 names(df2) <- c("N", "RMSE")
 df2$Sampling <- "Low"
 
-df <- rbind(df1, df2)
+df <- rbind(df0, df1, df2)
 
 p1 <- ggplot(df, aes(x=N, y=RMSE, group=Sampling)) +
   geom_line(aes(color=Sampling)) +
@@ -434,6 +596,38 @@ plot(caPr.disc[[2]], main='')
 
 rmse_table <- list()
 rmse_table[[1]] <- list(
+  Sampling="Zero",
+  Model="PS",
+  Mean_RMSE=round(mean(rmse_ps_none), 3),
+  SD_RMSE=round(sd(rmse_ps_none), 3),
+  Mean_RMSE_above=round(mean(rmse_ps_none[n_cells_obs_none >= 75]), 3),
+  SD_RMSE_above=round(sd(rmse_ps_none[n_cells_obs_none >= 75]), 3)
+)
+rmse_table[[2]] <- list(
+  Sampling="Zero",
+  Model="SP",
+  Mean_RMSE=round(mean(rmse_sp_none), 3),
+  SD_RMSE=round(sd(rmse_sp_none), 3),
+  Mean_RMSE_above=round(mean(rmse_sp_none[n_cells_obs_none >= 75]), 3),
+  SD_RMSE_above=round(sd(rmse_sp_none[n_cells_obs_none >= 75]), 3)
+)
+rmse_table[[3]] <- list(
+  Sampling="Zero",
+  Model="PR",
+  Mean_RMSE=round(mean(rmse_pr_none), 3),
+  SD_RMSE=round(sd(rmse_pr_none), 3),
+  Mean_RMSE_above=round(mean(rmse_pr_none[n_cells_obs_none >= 75]), 3),
+  SD_RMSE_above=round(sd(rmse_pr_none[n_cells_obs_none >= 75]), 3)
+)
+rmse_table[[4]] <- list(
+  Sampling="Zero",
+  Model="BART",
+  Mean_RMSE=round(mean(rmse_bart_none), 3),
+  SD_RMSE=round(sd(rmse_bart_none), 3),
+  Mean_RMSE_above=round(mean(rmse_bart_none[n_cells_obs_none >= 75]), 3),
+  SD_RMSE_above=round(sd(rmse_bart_none[n_cells_obs_none >= 75]), 3)
+)
+rmse_table[[5]] <- list(
   Sampling="Low",
   Model="PS",
   Mean_RMSE=round(mean(rmse_ps_low), 3),
@@ -441,7 +635,7 @@ rmse_table[[1]] <- list(
   Mean_RMSE_above=round(mean(rmse_ps_low[n_cells_obs_low >= 75]), 3),
   SD_RMSE_above=round(sd(rmse_ps_low[n_cells_obs_low >= 75]), 3)
 )
-rmse_table[[2]] <- list(
+rmse_table[[6]] <- list(
   Sampling="Low",
   Model="SP",
   Mean_RMSE=round(mean(rmse_sp_low), 3),
@@ -449,7 +643,7 @@ rmse_table[[2]] <- list(
   Mean_RMSE_above=round(mean(rmse_sp_low[n_cells_obs_low >= 75]), 3),
   SD_RMSE_above=round(sd(rmse_sp_low[n_cells_obs_low >= 75]), 3)
 )
-rmse_table[[3]] <- list(
+rmse_table[[7]] <- list(
   Sampling="Low",
   Model="PR",
   Mean_RMSE=round(mean(rmse_pr_low), 3),
@@ -457,7 +651,7 @@ rmse_table[[3]] <- list(
   Mean_RMSE_above=round(mean(rmse_pr_low[n_cells_obs_low >= 75]), 3),
   SD_RMSE_above=round(sd(rmse_pr_low[n_cells_obs_low >= 75]), 3)
 )
-rmse_table[[4]] <- list(
+rmse_table[[8]] <- list(
   Sampling="Low",
   Model="BART",
   Mean_RMSE=round(mean(rmse_bart_low), 3),
@@ -465,7 +659,7 @@ rmse_table[[4]] <- list(
   Mean_RMSE_above=round(mean(rmse_bart_low[n_cells_obs_low >= 75]), 3),
   SD_RMSE_above=round(sd(rmse_bart_low[n_cells_obs_low >= 75]), 3)
 )
-rmse_table[[5]] <- list(
+rmse_table[[9]] <- list(
   Sampling="High",
   Model="PS",
   Mean_RMSE=round(mean(rmse_ps_high), 3),
@@ -473,7 +667,7 @@ rmse_table[[5]] <- list(
   Mean_RMSE_above=round(mean(rmse_ps_high[n_cells_obs_high >= 75]), 3),
   SD_RMSE_above=round(sd(rmse_ps_high[n_cells_obs_high >= 75]), 3)
 )
-rmse_table[[6]] <- list(
+rmse_table[[10]] <- list(
   Sampling="High",
   Model="SP",
   Mean_RMSE=round(mean(rmse_sp_high), 3),
@@ -481,7 +675,7 @@ rmse_table[[6]] <- list(
   Mean_RMSE_above=round(mean(rmse_sp_high[n_cells_obs_high >= 75]), 3),
   SD_RMSE_above=round(sd(rmse_sp_high[n_cells_obs_high >= 75]), 3)
 )
-rmse_table[[7]] <- list(
+rmse_table[[11]] <- list(
   Sampling="High",
   Model="PR",
   Mean_RMSE=round(mean(rmse_pr_high), 3),
@@ -489,7 +683,7 @@ rmse_table[[7]] <- list(
   Mean_RMSE_above=round(mean(rmse_pr_high[n_cells_obs_high >= 75]), 3),
   SD_RMSE_above=round(sd(rmse_pr_high[n_cells_obs_high >= 75]), 3)
 )
-rmse_table[[8]] <- list(
+rmse_table[[12]] <- list(
   Sampling="High",
   Model="BART",
   Mean_RMSE=round(mean(rmse_bart_high), 3),
@@ -498,7 +692,7 @@ rmse_table[[8]] <- list(
   SD_RMSE_above=round(sd(rmse_bart_high[n_cells_obs_high >= 75]), 3)
 )
 write_latex_table(ldply(rmse_table, "data.frame"), fname="rmse_table_bart.txt", 
-                  path="/Users/brianconroy/Documents/research/paper/")
+                  path="/Users/brianconroy/Documents/research/paper_aas/")
 
 
 ########################################################################
@@ -507,6 +701,22 @@ write_latex_table(ldply(rmse_table, "data.frame"), fname="rmse_table_bart.txt",
 
 table_dataset <- list()
 table_dataset[[1]] <- list(
+  Sampling="Zero",
+  Quantity="Observed Cells",
+  Mean=round(mean(n_cells_obs_none), 3),
+  SD=round(sd(n_cells_obs_none), 3),
+  Q1=quantile(n_cells_obs_none, 0.25),
+  Q2=quantile(n_cells_obs_none, 0.75)
+)
+table_dataset[[2]] <- list(
+  Sampling="Zero",
+  Quantity="Prevalence",
+  Mean=round(mean(prevalences_none), 3),
+  SD=round(sd(prevalences_none), 3),
+  Q1=round(quantile(prevalences_none, 0.25), 3),
+  Q2=round(quantile(prevalences_none, 0.75), 3)
+)
+table_dataset[[3]] <- list(
   Sampling="Low",
   Quantity="Observed Cells",
   Mean=round(mean(n_cells_obs_low), 3),
@@ -514,7 +724,7 @@ table_dataset[[1]] <- list(
   Q1=quantile(n_cells_obs_low, 0.25),
   Q2=quantile(n_cells_obs_low, 0.75)
 )
-table_dataset[[2]] <- list(
+table_dataset[[4]] <- list(
   Sampling="Low",
   Quantity="Prevalence",
   Mean=round(mean(prevalences_low), 3),
@@ -522,7 +732,7 @@ table_dataset[[2]] <- list(
   Q1=round(quantile(prevalences_low, 0.25), 3),
   Q2=round(quantile(prevalences_low, 0.75), 3)
 )
-table_dataset[[3]] <- list(
+table_dataset[[5]] <- list(
   Sampling="High",
   Quantity="Observed Cells",
   Mean=round(mean(n_cells_obs_high), 3),
@@ -530,7 +740,7 @@ table_dataset[[3]] <- list(
   Q1=quantile(n_cells_obs_high, 0.25),
   Q2=quantile(n_cells_obs_high, 0.75)
 )
-table_dataset[[4]] <- list(
+table_dataset[[6]] <- list(
   Sampling="High",
   Quantity="Prevalence",
   Mean=round(mean(prevalences_high), 3),
@@ -539,7 +749,7 @@ table_dataset[[4]] <- list(
   Q2=round(quantile(prevalences_high, 0.75), 3)
 )
 write_latex_table(ldply(table_dataset, "data.frame"), fname="dataset_table.txt", 
-                  path="/Users/brianconroy/Documents/research/paper/")
+                  path="/Users/brianconroy/Documents/research/paper_aas/")
 
 
 ########################################################################

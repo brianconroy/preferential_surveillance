@@ -18,13 +18,7 @@
 # (Poisson Regression having been ommitted here due 
 # to its simplicity in model fitting). 
 
-library(raster)
-library(mvtnorm)
-library(R.utils)
 library(preferentialSurveillance)
-library(jsonlite)
-library(dbarts)
-sourceDirectory('R/')
 
 ###############################################################
 #                       Load Datasets                         #
@@ -40,6 +34,11 @@ plot(caPr)
 # number of grid cells
 N <- n_values(caPr.disc[[1]])
 print(N)
+
+# distance matrix of grid cells in study region
+cells.all <- c(1:ncell(caPr.disc))[!is.na(values(caPr.disc[[1]]))]
+coords <- xyFromCell(caPr.disc, cell = cells.all)
+d <- as.matrix(dist(coords, diag = TRUE, upper = TRUE))
 
 # mean area of each grid cell
 print(mean(raster::area(caPr.disc[[1]])[]))
@@ -70,7 +69,7 @@ prior_phi <- get_igamma_prior(prior_mean=15, prior_var=3)
 
 w_output <- logisticGp(
                        # Binary indicators, covariates, and distance matrix
-                       locs$status, locs$x.scaled, d, 
+                       data$loc$status, data$loc$x.scaled, d, 
                        
                        # HMC parameters
                        n.sample=1000, burnin=0, L_beta=8, L_w=8, proposal.sd.theta=0.3,
@@ -116,13 +115,13 @@ phi_initial <- mean(w_output$samples.phi)
 
 # Alpha+ and Beta+ Params -------------------------------------
 
-ini_case <- glm(case.data$y ~ case.data$x.standardised + w_initial[locs$ids] - 1, family='poisson')
+ini_case <- glm(data$case.data$y ~ data$case.data$x.standardised + w_initial[data$loc$ids] - 1, family='poisson')
 alpha_ca_initial <- coefficients(ini_case)[4]
 beta_ca_initial <- coefficients(ini_case)[1:3]
 
 # Alpha- and Beta- Params -------------------------------------
 
-ini_ctrl <- glm(ctrl.data$y ~ ctrl.data$x.standardised + w_initial[locs$ids] - 1, family='poisson')
+ini_ctrl <- glm(data$ctrl.data$y ~ data$ctrl.data$x.standardised + w_initial[data$loc$ids] - 1, family='poisson')
 alpha_co_initial <- coefficients(ini_ctrl)[4]
 beta_co_initial <- coefficients(ini_ctrl)[1:3]
 
@@ -289,9 +288,9 @@ save_output(w_interp, "cdph_baseline_interpolated_w_v2.json")
 
 ## Model for Cases --------------------------------------------
 
-X.ca <- case.data$x.standardised
-Y.ca <- case.data$y
-d.sub <- d[as.logical(locs$status), as.logical(locs$status)]
+X.ca <- data$case.data$x.standardised
+Y.ca <- data$case.data$y
+d.sub <- d[as.logical(data$loc$status), as.logical(data$loc$status)]
 
 # Initial parameter values
 set.seed(314)
@@ -359,9 +358,9 @@ save_output(kriged_w_ca, "output_cdph_baseline_krige_ca.json")
 
 ## Model for Controls -----------------------------------------
 
-X.co <- ctrl.data$x.standardised
-Y.co <- ctrl.data$y
-d.sub <- d[as.logical(locs$status), as.logical(locs$status)]
+X.co <- data$ctrl.data$x.standardised
+Y.co <- data$ctrl.data$y
+d.sub <- d[as.logical(data$loc$status), as.logical(data$loc$status)]
 
 # Hamiltonian Monte Carlo params
 n.sample__ <- 10000

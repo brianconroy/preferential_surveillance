@@ -9,11 +9,11 @@
 # preferential sampling.
 
 # This script simulated datasets
-# under low and high levels of
+# under low, high and  zero levels of
 # preferential sampling.
 ###############################
 
-R.utils::sourceDirectory('R/')
+library(preferentialSurveillance)
 
 set.seed(12)
 
@@ -60,6 +60,12 @@ simulate_data <- function(label, disc, n_sims=25, save_dir=NULL,
     Alpha.case <- 1
     Alpha.ctrl <- -0.25
     beta.case <- c(-1.5, 0.25, 0.25)
+    beta.ctrl <- c(3, 1, 0.5)
+    beta.loc <- c(-1.5, 1, -0.25)
+  } else if (label == "none"){
+    Alpha.case <- 0 
+    Alpha.ctrl <- 0
+    beta.case <- c(1, 0.75, 0.25)
     beta.ctrl <- c(3, 1, 0.5)
     beta.loc <- c(-1.5, 1, -0.25)
   }
@@ -112,12 +118,14 @@ simulate_data <- function(label, disc, n_sims=25, save_dir=NULL,
     
     if (!is.null(save_dir)) {
       dir.create(save_dir)
-      param_fname <- paste0("params_", label, "_", i, ".json")
-      data_fname  <- paste0("data_", label, "_", i, ".json")
-      
-      write( toJSON(params), file.path(save_dir, param_fname) )
-      write( toJSON(data), file.path(save_dir, data_fname) )
     }
+    
+    param_fname <- paste0("params_", label, "_", i, ".json")
+    data_fname  <- paste0("data_", label, "_", i, ".json")
+    
+    write( toJSON(params), file.path(save_dir, param_fname) )
+    write( toJSON(data), file.path(save_dir, data_fname) )
+    
   }
   
   list(prevalences = prevalences, 
@@ -130,3 +138,4 @@ simulate_data <- function(label, disc, n_sims=25, save_dir=NULL,
 
 low_sample <- simulate_data("low", caPr.disc)
 high_sample <- simulate_data("high", caPr.disc)
+none_sample <- simulate_data("none", caPr.disc)

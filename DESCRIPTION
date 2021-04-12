@@ -26,7 +26,8 @@ Imports:
     tictoc (>= 1.0),
     foreach (>= 1.4.4),
     doParallel (>= 1.0.14),
-    jsonlite (>= 1.7.0)
+    jsonlite (>= 1.7.2),
+    dbarts(>= 0.9.19)
 Suggests: 
     knitr,
     rmarkdown

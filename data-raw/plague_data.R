@@ -60,7 +60,7 @@ library(R.utils)
 library(gridExtra)
 library(jsonlite)
 library(fields)
-library(preferentialSurveillance)
+#library(preferentialSurveillance)
 sourceDirectory('R/')
 
 ## Define Global Variables ------------------------------------------------------------
