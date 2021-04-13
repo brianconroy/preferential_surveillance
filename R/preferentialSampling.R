@@ -50,15 +50,30 @@
 #'
 #' @return List containing posterior samples and associated tuning values.
 #' @export
-preferentialSampling <- function(data, d, n.sample, burnin,
+preferentialSampling <- function(data, d, 
+                                 
+                                 # MCMC sampling parameters
+                                 n.sample, burnin,
                                  L_w, L_ca, L_co, L_a_ca, L_a_co,
                                  proposal.sd.theta=0.3,
+                                 
+                                 # Self-tuning parameters
                                  m_aca=2000, m_aco=2000, m_ca=700, m_co=700, m_w=700, 
-                                 target_aca=0.75, target_aco=0.75, target_ca=0.75, target_co=0.75, target_w=0.75, target_loc=0.75,
-                                 self_tune_w=TRUE, self_tune_aca=TRUE, self_tune_aco=TRUE, self_tune_ca=TRUE, self_tune_co=TRUE, self_tune_loc=TRUE,
-                                 delta_w=NULL, delta_aca=NULL, delta_aco=NULL, delta_ca=NULL, delta_co=NULL, delta_loc=NULL,
-                                 beta_ca_initial=NULL, beta_co_initial=NULL, alpha_ca_initial=NULL, alpha_co_initial=NULL, beta_loc_initial=NULL,
-                                 theta_initial=NULL, phi_initial=NULL, w_initial=NULL,
+                                 target_aca=0.75, target_aco=0.75, target_ca=0.75,
+                                 target_co=0.75, target_w=0.75, target_loc=0.75,
+                                 self_tune_w=TRUE, self_tune_aca=TRUE, self_tune_aco=TRUE, 
+                                 self_tune_ca=TRUE, self_tune_co=TRUE, self_tune_loc=TRUE, 
+                                 
+                                 # Hamiltonian Monte Carlo parameters used if not self-tuning
+                                 delta_w=NULL, delta_aca=NULL, delta_aco=NULL, 
+                                 delta_ca=NULL, delta_co=NULL, delta_loc=NULL,
+                                 
+                                 # Initial values
+                                 beta_ca_initial=NULL, beta_co_initial=NULL, alpha_ca_initial=NULL, 
+                                 alpha_co_initial=NULL, beta_loc_initial=NULL, theta_initial=NULL, 
+                                 phi_initial=NULL, w_initial=NULL,
+                                 
+                                 # Prior parameters
                                  prior_phi, prior_theta, prior_alpha_ca_var, prior_alpha_co_var){
   
   
@@ -378,15 +393,28 @@ continue_mcmc <- function(data, D, output, n.sample){
   prior_theta <- output$prior_theta
   prior_alpha_ca_var <- output$prior_alpha_ca_var
   prior_alpha_co_var <- output$prior_alpha_co_var
-  more_output <- preferentialSampling(data, D, n.sample, burnin=0, 
+  more_output <- preferentialSampling(data, D, 
+                                      
+                                      # MCMC parameters
+                                      n.sample, burnin=0, 
                                       L_w=L_w, L_ca=L_ca, L_co=L_co, L_a_ca=L_a_ca, L_a_co=L_a_co,
                                       proposal.sd.theta=proposal.sd.theta,
-                                      self_tune_w=FALSE, self_tune_aca=FALSE, self_tune_aco=FALSE, self_tune_ca=FALSE, self_tune_co=FALSE, self_tune_loc=FALSE,
-                                      delta_w=delta_w, delta_aca=delta_aca, delta_aco=delta_aco, delta_ca=delta_ca, delta_co=delta_co, delta_loc=delta_loc,
+                                      
+                                      # Self-tuning arguments
+                                      self_tune_w=FALSE, self_tune_aca=FALSE, self_tune_aco=FALSE, 
+                                      self_tune_ca=FALSE, self_tune_co=FALSE, self_tune_loc=FALSE,
+                                      delta_w=delta_w, delta_aca=delta_aca, delta_aco=delta_aco, 
+                                      delta_ca=delta_ca, delta_co=delta_co, delta_loc=delta_loc,
+                                      
+                                      # Initial values
                                       beta_ca_initial=beta_ca_initial, beta_co_initial=beta_co_initial, 
-                                      alpha_ca_initial=alpha_ca_initial, alpha_co_initial=alpha_co_initial, beta_loc_initial=beta_loc_initial,
-                                      theta_initial=theta_initial, phi_initial=phi_initial, w_initial=w_initial,
-                                      prior_phi=prior_phi, prior_theta=prior_theta, prior_alpha_ca_var=prior_alpha_ca_var, 
+                                      alpha_ca_initial=alpha_ca_initial, alpha_co_initial=alpha_co_initial, 
+                                      beta_loc_initial=beta_loc_initial, theta_initial=theta_initial, 
+                                      phi_initial=phi_initial, w_initial=w_initial,
+                                      
+                                      # Prior distributions
+                                      prior_phi=prior_phi, prior_theta=prior_theta, 
+                                      prior_alpha_ca_var=prior_alpha_ca_var, 
                                       prior_alpha_co_var=prior_alpha_ca_var)
   
   # combine outputs

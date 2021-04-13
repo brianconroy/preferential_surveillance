@@ -45,6 +45,9 @@ print(mean(raster::area(caPr.disc[[1]])[]))
 plot(caPr.disc)
 
 # load processed plague dataset
+# Note: this data was removed from the 
+# package due to CDPH policy but is 
+# available upon request.
 data <- plague_data
 
 ###############################################################

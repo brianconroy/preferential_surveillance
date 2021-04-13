@@ -48,6 +48,9 @@ plot(caPr.disc)
 output <- load_output("output_cdph_baseline_v2.json")
 
 # load processed plague dataset
+# Note: this data was removed from the 
+# package due to CDPH policy but is 
+# available upon request.
 data <- plague_data
 
 ###############################################################

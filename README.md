@@ -8,8 +8,6 @@ comparing performance of the proposed method against various benchmarks
 Also included is an analysis of real surveillance data monitoring plague (*Yersinia pestis*) 
 within the rodent population of California. 
 
-# Organization
-
 This repository can be installed like a package for ease of access to
 function documentation, processed datasets, and dependency management.
 However it also contains a number of "project like" elements including
@@ -68,3 +66,11 @@ library(preferentialSurveillance)
 # first and second principal components of the PRISM climatic dataset
 plot(prism_pca)
 ```
+
+# Data Access
+
+**Caveat**. The scripts for data analysis in this repo consume a plague surveillance
+dataset of aggregate (1983-2015) counts of plague positive and
+negative rodents. This dataset was collected and is maintained by the California Department of Public Health - 
+Vector Borne Disease Section.
+Due to department policy the data are **not** included in the repository, but are available upon request.
