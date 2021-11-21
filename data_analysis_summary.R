@@ -18,6 +18,8 @@
 # (4) Poisson regression models
 
 library(preferentialSurveillance)
+library(raster)
+library(sp)
 
 ## Global Variables -------------------------------------------
 
@@ -31,7 +33,7 @@ DST <- "/Users/brianconroy/Documents/research/project1/analysis/"
 
 # PRISM principal components
 caPr <- prism_pca
-c <- aggregate(caPr, fact=5)
+caPr.disc <- aggregate(caPr, fact=5)
 
 # plot Prism PCAS
 plot(caPr)
@@ -44,14 +46,39 @@ print(N)
 print(mean(raster::area(caPr.disc[[1]])[]))
 plot(caPr.disc)
 
-# load output of the proposed method
-output <- load_output("output_cdph_baseline_v2.json")
-
 # load processed plague dataset
 # Note: this data was removed from the 
 # package due to CDPH policy but is 
 # available upon request.
-data <- plague_data
+rodents <- read.csv(
+  "/Users/brianconroy/Documents/research/cdph/data/CDPH_scurid_updated_full.csv",
+  header=T,
+  sep=",")
+
+# Create the dataset of locations, case and control counts
+data <- assemble_data(rodents, caPr.disc)
+
+# extract values
+case.data <- data$case.data
+ctrl.data <- data$ctrl.data
+locs <- data$loc
+
+###############################################################
+#                   Load Model Outputs                        #
+###############################################################
+
+# load output of the proposed method
+output <- load_output("output_cdph_baseline_v2.json")
+
+# Load the spatially downscaled posterior samples of the
+# random effects (w). This may take around ~5 min to load.
+w_interp <- load_output("cdph_baseline_interpolated_w_v2.json")
+
+# Load outputs of model fitting and kriging
+output.sp_ca <- load_output("output_cdph_baseline_spatial_poisson_case.json")
+output.sp_co <- load_output("output_cdph_baseline_spatial_poisson_ctrl.json")
+output_krige_ca <- load_output("output_cdph_baseline_krige_ca.json")
+output_krige_co <- load_output("output_cdph_baseline_krige_co.json")
 
 ###############################################################
 #                   Study Region Description                  #
@@ -59,15 +86,9 @@ data <- plague_data
 
 # plot the gridded study area with indicators 
 # for which cells are observed by the system
-plot(rasterToPolygons(data$loc$raster), add=T, border='black', lwd=1) 
+plot(rasterToPolygons(data$loc$raster), add=T, border='black', lwd=1)
 
 # plot sampling locations as points
-# NOTE: The raw surveillance dataset is not publicly accessible due to 
-# privacy concerns (relating to property values and the exact locations 
-# of plague positive rodents...). This block will only run if the raw
-# dataset is locally accessible.
-src <- "/Users/brianconroy/Documents/research/cdph/data/"
-rodents <- read.csv(paste(src, "CDPH_scurid_updated_full.csv", sep=""), header=T, sep=",")
 coords_all <- cbind(matrix(rodents$Lon_Add_Fix), rodents$Lat_Add_Fix)
 us <- raster::getData("GADM", country="USA", level=1)
 ca <- us[match(toupper("California"),toupper(us$NAME_1)),]
@@ -75,10 +96,6 @@ plot(ca)
 points(coords_all, pch=20, cex=0.5)
 
 ## Dataset Description ---------------------------------------
-
-case.data <- data$case.data
-ctrl.data <- data$ctrl.data
-locs <- data$loc
 
 # table of summary metrics
 count_sums <- rbind(summary(case.data$y), summary(ctrl.data$y))
@@ -106,10 +123,6 @@ plot_traces_general(output)
 #                  Proposed Method Risk Map                   #
 ###############################################################
 
-# Load the spatially downscaled posterior samples of the
-# random effects (w). This may take around ~5 min to load.
-w_interp <- load_output("cdph_baseline_interpolated_w_v2.json")
-
 # Load the covariates (PRISM principal components)
 # over the study region at high resolution
 X_high <- load_x_ca()
@@ -117,10 +130,19 @@ X_high <- load_x_ca()
 # Calculate posterior risk samples at high resolution
 samples.risk <- calc_posterior_risk_ds(output, X_high, w_interp)
 
-# Raster of posterior means from proposed model (high resolution)
+# Overlay posterior mean risk onto raster
 r_proposed <- caPr[[1]]
 r_proposed[][!is.na(r_proposed[])] <- colMeans(samples.risk)
 plot(r_proposed)
+
+# Calculate "significance map" showing posterior probabilities
+# of risk in each grid cell exceeding 0.064, the statewide
+# average risk
+sigmaps <- calc_significance(samples.risk, caPr[[1]], threshold=0.064)
+
+# indicators showing cells for which the probability of exceeding
+# the statewide average risk is greater than 0.95
+plot(sigmaps$r_inds_95)
 
 # Sanity check (overlay cases and controls). This chunk will only
 # run if you have acccess to the raw plague surveillance dataset
@@ -134,12 +156,6 @@ points(coords_pos, col=2, cex=0.2)
 ###############################################################
 #            Spatial Poisson Regression Risk Map              #
 ###############################################################
-
-# Load outputs of model fitting and kriging
-output.sp_ca <- load_output("output_cdph_baseline_spatial_poisson_case.json")
-output.sp_co <- load_output("output_cdph_baseline_spatial_poisson_ctrl.json")
-output_krige_ca <- load_output("output_cdph_baseline_krige_ca.json")
-output_krige_co <- load_output("output_cdph_baseline_krige_co.json")
 
 # Parameter estimates ----------------------------------------
 w.hat_spca <- colMeans(output.sp_ca$samples.w)
@@ -185,9 +201,6 @@ r2[][1] <- 0
 plot(r1)
 plot(r2)
 
-plot(rescaled[[1]])
-plot(rescaled[[2]])
-
 ###############################################################
 #                 Poisson Regression Risk Map                 #
 ###############################################################
@@ -227,6 +240,98 @@ rescaled <- equalize_scales(r_proposed, r_risk_high_p)
 plot(rescaled[[1]])
 plot(rescaled[[2]])
 
+
+###############################################################
+#                 Model Fit Assessment                        #
+###############################################################
+
+# load covariates at coarse resolution
+X_low <- load_x_ca(factor=5)
+
+# proposed model -----------------------------------------------------------------------------------------
+
+# parameter estimates from proposed model
+beta_ca <- colMeans(output$samples.beta.ca)
+beta_co <- colMeans(output$samples.beta.co)
+alpha_ca <- mean(output$samples.alpha.ca)
+alpha_co <- mean(output$samples.alpha.co)
+w <- colMeans(output$samples.w)
+
+# expected disease positive and negative counts at observed grid cells
+pos_expected <- exp(X_low %*% beta_ca + alpha_ca * w)[as.logical(data$loc$status)]
+neg_expected <- exp(X_low %*% beta_co + alpha_co * w)[as.logical(data$loc$status)]
+
+# poisson model -----------------------------------------------------------------------------------------
+
+# expected disease positive and negative counts at observed grid cells
+pos_expected_p <- exp(X_low %*% beta.ca.hat_p)[as.logical(data$loc$status)]
+neg_expected_p <- exp(X_low %*% beta.co.hat_p)[as.logical(data$loc$status)]
+
+# spatial poisson model ----------------------------------------------------------------------------------
+
+# expected disease positive and negative counts at observed grid cells
+pos_expected_sp <- exp(X_low %*% beta_ca_sp + w_ca_est)[as.logical(data$loc$status)]
+neg_expected_sp <- exp(X_low %*% beta_co_sp + w_co_est)[as.logical(data$loc$status)]
+
+# plot and summarize --------------------------------------------------------------------------------------
+
+# observed disease positive and negative counts at observed grid cells
+pos_obs <- data$case.data$y
+neg_obs <- data$ctrl.data$y
+
+# scatterplots of observed vs expected counts
+par(mfrow=c(1,2))
+plot(y=pos_expected, x=pos_obs,
+     ylab = 'Expected Disease Positive Count',
+     xlab = 'Observed Disease Positive Count'
+     ); abline(0,1)
+plot(y=neg_expected, x=neg_obs,
+     ylab = 'Expected Disease Negative Count',
+     xlab = 'Observed Disease Negative Count'
+); abline(0,1)
+
+plot(y=pos_expected_sp, x=pos_obs,
+     ylab = 'Expected Disease Positive Count',
+     xlab = 'Observed Disease Positive Count'
+); abline(0,1)
+plot(y=neg_expected_sp, x=neg_obs,
+     ylab = 'Expected Disease Negative Count',
+     xlab = 'Observed Disease Negative Count'
+); abline(0,1)
+
+# tabularize root mean squared errors 
+rmse_fit_tab <- 
+  rbind(
+    data.frame(
+      model = 'proposed',
+      rmse_positive = round(sqrt(
+        mean((pos_obs - pos_expected)**2)
+      ), 3),
+      rmse_negative = round(sqrt(
+        mean((neg_obs - neg_expected)**2)
+      ), 3)
+    ), 
+    data.frame(
+      model = 'spatial poisson',
+      rmse_positive = round(sqrt(
+        mean((pos_obs - pos_expected_sp)**2)
+      ), 3),
+      rmse_negative = round(sqrt(
+        mean((neg_obs - neg_expected_sp)**2)
+      ), 3)
+    ),
+    data.frame(
+      model = 'poisson',
+      rmse_positive = round(sqrt(
+        mean((pos_obs - pos_expected_p)**2)
+      ), 3),
+      rmse_negative = round(sqrt(
+        mean((neg_obs - neg_expected_p)**2)
+      ), 3)
+    )
+  )
+
+write_latex_table(rmse_fit_tab, "rmse_fit_tab.txt", path=DST)
 
 ###############################################################
 #                    BART Model Risk Map                      #
@@ -305,3 +410,60 @@ par(mfrow=c(1,1))
 plot_indicators(r_proposed, 0.033)
 points(coords_neg, col=4, pch=20, cex=0.5)
 points(coords_pos, col=2, pch=20, cex=0.5)
+
+###############################################################
+#                 Table of Parameter Estimates                #
+###############################################################
+
+# load initial values for spatial random effects and covariance params
+w_output <- load_output("w_inival_output_cdph_v2.json")
+
+# load initial values for other model parameters
+inivals <- load_output("other_initial_values_cdph_v2.json")
+
+summarize_estimate <- function(posterior_samples, param_name, ini_val){
+  # summarize the prior and posterior characteristics of an estimate
+  return(
+    data.frame(
+      Parameter = param_name,
+      Prior.Mean = round(ini_val, 3),
+      Posterior.Mean = round(mean(posterior_samples), 3),
+      Posterior.Median = round(median(posterior_samples), 3),
+      Credible.Lb = round(quantile(posterior_samples, 0.025), 3),
+      Credible.Ub = round(quantile(posterior_samples, 0.975), 3)
+    )
+  )
+}
+
+param_table <- rbind(
+  # sampling and spatial params
+  summarize_estimate(output$samples.alpha.ca, param_name = '$alpha_+$', ini_val = inivals$alpha_ca_initial),
+  summarize_estimate(output$samples.alpha.co, param_name = '$alpha_-$', ini_val = inivals$alpha_co_initial),
+  summarize_estimate(output$samples.theta, param_name = '$theta$', ini_val = theta_initial),
+  summarize_estimate(output$samples.phi, param_name = '$phi$', ini_val = phi_initial),
+  # spatial covariate params (for disease + specimen)
+  summarize_estimate(output$samples.beta.ca[,1], param_name = '$beta_+0$', ini_val = inivals$beta_ca_initial[1]),
+  summarize_estimate(output$samples.beta.ca[,2], param_name = '$beta_+1$', ini_val = inivals$beta_ca_initial[2]),
+  summarize_estimate(output$samples.beta.ca[,3], param_name = '$beta_+2$', ini_val = inivals$beta_ca_initial[3]),
+  # spatial covariate params (for disease - specimen)
+  summarize_estimate(output$samples.beta.co[,1], param_name = '$beta_-0$', ini_val = inivals$beta_co_initial[1]),
+  summarize_estimate(output$samples.beta.co[,2], param_name = '$beta_-1$', ini_val = inivals$beta_co_initial[2]),
+  summarize_estimate(output$samples.beta.co[,3], param_name = '$beta_-2$', ini_val = inivals$beta_co_initial[3]),
+  # spatial covariate params for the component describing sampling locatioons
+  summarize_estimate(output$samples.beta.loc[,1], param_name = '$gamma_0$', ini_val = beta_loc_initial[1]),
+  summarize_estimate(output$samples.beta.loc[,2], param_name = '$gamma_1$', ini_val = beta_loc_initial[2]),
+  summarize_estimate(output$samples.beta.loc[,3], param_name = '$gamma_2$', ini_val = beta_loc_initial[3])
+)
+
+# save in LaTex ready format
+write_latex_table(param_table, "param_table.txt", path=DST)
+
+###############################################################
+#                 Check Zero Inflation                        #
+###############################################################
+
+# percent of disease negative counts equal to zero
+print(round(100 * sum(data$ctrl.data$y == 0) / length(data$ctrl.data$y), 3))
+
+# percent of disease positive counts equal to zero
+print(round(100 * sum(data$case.data$y == 0) / length(data$case.data$y), 3))

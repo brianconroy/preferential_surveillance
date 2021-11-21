@@ -19,6 +19,7 @@
 # to its simplicity in model fitting). 
 
 library(preferentialSurveillance)
+library(raster)
 
 ###############################################################
 #                       Load Datasets                         #

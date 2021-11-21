@@ -12,7 +12,7 @@ calc_posterior_risk_ds <- function(output, x, w_ds){
     beta_co <- output$samples.beta.co[i,]
     alpha_ca <- output$samples.alpha.ca[i]
     alpha_co <- output$samples.alpha.co[i]
-    w <- w_ds[i]
+    w <- w_ds[i,]
 
     lodds.i <- x %*% beta_ca + alpha_ca * w - x %*% beta_co - alpha_co * w
     risk_samp[i,] <- t(calc_risk(lodds.i))
@@ -53,8 +53,11 @@ calc_significance <- function(samples.risk, r, threshold){
   if (sum(inds_25) == 0){inds_95[3]=1}
   
   inds <- inds_95 + inds_50 + inds_25
-  r_inds <- overlay(inds, r)
-  r_inds_95 <- overlay(inds_95, r)
+  r_inds <- r
+  r_inds[][!is.na(r[])] <- inds
+  
+  r_inds_95 <- r
+  r_inds_95[][!is.na(r_inds_95[])] <- inds_95
   
   return(list(
     r_point_est=r_point_est,
